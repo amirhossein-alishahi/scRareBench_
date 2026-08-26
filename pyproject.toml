@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scrarebench"
+version = "0.9.2"
+description = "scIB-compatible and rare-cell-aware benchmarking for scRNA-seq integration latent spaces"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "Amirhossein Alishahi and collaborators"}
+]
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "scipy>=1.11",
+  "scikit-learn>=1.4",
+  "matplotlib>=3.8",
+  "PyYAML>=6.0",
+  "anndata>=0.10",
+  "scanpy>=1.10",
+  "python-igraph>=0.11",
+  "leidenalg>=0.10",
+  "plotly>=5.20",
+  "scikit-misc>=0.3",
+  "scib-metrics==0.5.9",
+]
+
+[project.optional-dependencies]
+harmony = ["harmonypy==2.0.0"]
+scvi = ["scvi-tools==1.4.3"]
+mrvi = ["scvi-tools==1.4.3"]
+methods = ["harmonypy==2.0.0", "scvi-tools==1.4.3"]
+dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.2"]
+
+[project.scripts]
+scrarebench = "scrarebench.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+scrarebench = ["config/*.yaml", "config/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

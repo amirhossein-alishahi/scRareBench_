@@ -1,0 +1,15 @@
+# Provisional version-1 rules. Every threshold is exposed in the API and report.
+preserved:
+  min_precision: 0.70
+  min_recall: 0.70
+  min_inverse_purity: 0.70
+lineage_assimilation:
+  max_recall: 0.50
+  min_dominant_wrong_fraction: 0.50
+lineage_leakage:
+  min_recall: 0.50
+  max_precision: 0.50
+batch_fragmentation:
+  max_inverse_purity: 0.50
+  min_within_type_batch_nmi: 0.50
+  min_clusters: 2

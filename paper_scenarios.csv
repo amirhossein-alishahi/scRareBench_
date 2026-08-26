@@ -1,0 +1,22 @@
+cell_type,scenario,distribution,topology,parent_type,curation_source,notes
+ILC,GR-DL,GR,DL,,paper_curated,Distinct rare lineage represented across multiple batches
+ILC1,GR-DL,GR,DL,,paper_curated,Group 1 innate lymphoid population
+MAIT,GR-DL,GR,DL,,paper_curated,Invariant T-cell lineage
+gdT CD158b+,GR-DL,GR,DL,,paper_curated,Gamma-delta T-cell lineage
+gdT TCRVD2+,GR-DL,GR,DL,,paper_curated,Gamma-delta T-cell lineage
+B1 B IGKC+,GR-DL,GR,DL,,paper_curated,B1 B-cell population
+B1 B IGKC-,GR-DL,GR,DL,,paper_curated,B1 B-cell population
+pDC,LE-DL,LE,DL,,experimentally_controlled,Retained only in s3d7 s3d6 and s2d1
+cDC1,SR-DL,SR,DL,,paper_curated,Ultra-rare distinct dendritic population
+dnT,SR-DL,SR,DL,,paper_curated,Double-negative T-cell population
+CD8+ T CD57+ CD45RA+,LE-RM,LE,RM,,experimentally_controlled,Retained only in s3d6 s4d8 and s1d3
+CD4+ T CD314+ CD45RA+,SR-RM,SR,RM,CD4+ T naive,paper_curated,Rare state related to an abundant T-cell population
+CD8+ T naive CD127+ CD26- CD101-,SR-RM,SR,RM,CD8+ T naive,paper_curated,Rare state related to an abundant T-cell population
+T prog cycling,SR-RM,SR,RM,,paper_curated,Rare cycling or transitional state
+CD8+ T CD69+ CD45RA+,GR-RM,GR,RM,CD8+ T naive,paper_curated,Rare activation state
+Plasma cell IGKC+,GR-RM,GR,RM,,paper_curated,Related terminal B-cell state
+Plasma cell IGKC-,GR-RM,GR,RM,,paper_curated,Related terminal B-cell state
+Plasmablast IGKC+,GR-RM,GR,RM,,paper_curated,Related terminal B-cell state
+Plasmablast IGKC-,GR-RM,GR,RM,,paper_curated,Related terminal B-cell state
+T reg,GR-RM,GR,RM,CD4+ T naive,paper_curated,Related T-cell state
+MK/E prog,GR-RM,GR,RM,,paper_curated,Rare progenitor state

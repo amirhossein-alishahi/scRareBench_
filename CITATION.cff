@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the accompanying rare-cell integration benchmarking study, scib-metrics, and the original scIB study."
+title: "scRareBench"
+type: software
+version: 0.9.1
+date-released: 2026-08-07
+authors:
+  - family-names: Alishahi
+    given-names: Amirhossein

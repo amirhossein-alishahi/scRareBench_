@@ -1,0 +1,12 @@
+cell_type,scenario,distribution,topology,parent_type,curation_source,include_in_six_state,threshold_sensitive,low_confidence,protected_group_restricted,evidence_note
+fibroblast,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,False,Distinct fibroblast lineage/identity.
+kidney interstitial alternatively activated macrophage,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Activated macrophage state/subtype; related-manifold topology.
+kidney loop of Henle thin ascending limb epithelial cell,LE-DL,LE,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,Distinct epithelial/anatomical identity.
+kidney outer medulla collecting duct intercalated cell,LE-DL,LE,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,False,Distinct collecting-duct intercalated identity.
+lymphocyte,,GR,AMBIGUOUS,,rare_cell_benchmark_report_probable_annotation_v1,False,True,True,False,Annotation is too broad to assign a defensible DL/RM topology.
+mesangial cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Distinct mesangial lineage/identity.
+neutrophil,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,False,Distinct neutrophil lineage/identity.
+non-classical monocyte,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Monocyte subtype/state.
+plasma cell,LE-RM,LE,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,False,Differentiated B-lineage state with a definable parent.
+vasa recta descending limb cell,LE-DL,LE,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,False,Distinct vascular/anatomical cell identity.
+vascular associated smooth muscle cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Distinct smooth-muscle cell identity.

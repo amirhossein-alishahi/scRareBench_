@@ -1,0 +1,13 @@
+cell_type,scenario,distribution,topology,parent_type,curation_source,include_in_six_state,threshold_sensitive,low_confidence,protected_group_restricted,evidence_note
+B cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct B-cell lineage/identity.
+conventional dendritic cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct dendritic-cell lineage/identity.
+gamma-delta T cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct gamma-delta T-cell lineage/identity.
+hematopoietic stem cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct hematopoietic stem-cell identity.
+immature B cell,GR-RM,GR,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,True,B-cell state/subtype/differentiation state.
+memory B cell,GR-RM,GR,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,True,B-cell memory state/subtype.
+mucosal invariant T cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct MAIT lineage/identity.
+natural killer cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct NK lineage/identity.
+neutrophil,LE-DL,LE,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,True,Distinct neutrophil lineage/identity.
+plasma cell,GR-RM,GR,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Differentiated B-lineage state.
+plasmacytoid dendritic cell,SR-DL,SR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,Distinct pDC lineage/identity.
+regulatory T cell,GR-RM,GR,RM,T cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Regulatory T-cell state/subtype.

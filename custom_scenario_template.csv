@@ -1,0 +1,3 @@
+cell_type,scenario,distribution,topology,parent_type,curation_source,notes
+Rare population A,SR-RM,SR,RM,Parent population,user_curated,Replace with biological evidence
+Rare population B,LE-DL,LE,DL,,user_curated,Replace with biological evidence

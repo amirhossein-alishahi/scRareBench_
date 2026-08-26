@@ -1,0 +1,18 @@
+cell_type,scenario,distribution,topology,parent_type,curation_source,include_in_six_state,threshold_sensitive,low_confidence,protected_group_restricted,evidence_note
+B cells Naive,LE-RM,LE,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,Naive B-cell subtype/state.
+CAFs MSC iCAF-like s2,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,CAF/iCAF subtype.
+CAFs Transitioning s3,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Transitioning CAF state.
+CAFs myCAF like s4,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,myCAF subtype.
+Cycling PVL,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Cycling state of PVL.
+Cycling_Myeloid,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Cycling state of myeloid cells.
+Endothelial Lymphatic LYVE1,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Distinct lymphatic endothelial identity.
+Myeloid_c0_DC_LAMP3,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,False,LAMP3 dendritic-cell state/maturation program.
+Myeloid_c11_cDC2_CD1C,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,cDC2 lineage identified by CD1C.
+Myeloid_c3_cDC1_CLEC9A,SR-DL,SR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,cDC1 lineage identified by CLEC9A.
+Myeloid_c4_DCs_pDC_IRF7,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,pDC with an IRF7 program; treated as a state-specific related manifold.
+Myeloid_c5_Macrophage_3_SIGLEC1,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,SIGLEC1 macrophage state/subtype.
+Myeloid_c8_Monocyte_2_S100A9,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,S100A9 monocyte state/subtype.
+Myeloid_c9_Macrophage_2_CXCL10,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,CXCL10 activated macrophage state.
+Myoepithelial,LE-DL,LE,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,False,Distinct myoepithelial cell identity.
+PVL_Immature s2,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Immature state of PVL.
+T_cells_c5_CD8+_GZMK,LE-RM,LE,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,GZMK CD8 T-cell subtype/state.
