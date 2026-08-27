@@ -76,7 +76,7 @@ No scRareBench code change is needed for a new method name or dependency set.
 
 ## Release notebooks
 
-Official release notebooks install a fixed scRareBench Git tag (`v0.10.3` for this release), not the moving `main` branch. Method dependencies are declared explicitly inside the example notebook. The package itself remains method-agnostic.
+Official release notebooks install a fixed scRareBench Git tag (`v0.10.4` for this release), not the moving `main` branch. Method dependencies are declared explicitly inside the example notebook. The package itself remains method-agnostic.
 
 ## What belongs in a method example notebook
 

@@ -46,6 +46,7 @@ class RuntimeInstallReport:
     pip_check_before: tuple[str, ...] = ()
     pip_check_after: tuple[str, ...] = ()
     new_pip_check_issues: tuple[str, ...] = ()
+    relevant_dependency_packages: tuple[str, ...] = ()
 
 
 
@@ -88,7 +89,7 @@ def _base_requirements_from_installed_package() -> tuple[str, ...]:
         raise RuntimeError(
             "scRareBench is not installed. Bootstrap it first, for example:\n"
             "  python -m pip install --no-deps "
-            "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.3"
+            "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.4"
         ) from exc
 
     base: list[str] = []
@@ -148,9 +149,9 @@ def _pip_check_issues() -> tuple[str, ...]:
     """Return normalized ``pip check`` issue lines without treating exit 1 as fatal.
 
     ``pip check`` returns a non-zero status when conflicts exist. Runtime setup
-    compares the before/after sets so only conflicts newly introduced by this
-    installation are fatal. Pre-existing environment conflicts remain visible
-    as warnings.
+    compares the before/after sets. Classification of newly introduced issues
+    happens after installation so only conflicts relevant to scRareBench or the
+    user-declared method dependency closure are blocking.
     """
     proc = subprocess.run(
         [sys.executable, "-m", "pip", "check"],
@@ -166,6 +167,89 @@ def _pip_check_issues() -> tuple[str, ...]:
         })
     )
 
+
+
+def _canonical_dist_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", str(name).strip()).lower()
+
+
+def _requirement_name(requirement: str) -> str | None:
+    """Extract a distribution name from a PEP 508-ish requirement string.
+
+    This intentionally avoids importing ``packaging`` so ``scrarebench.runtime``
+    remains importable immediately after a ``--no-deps`` bootstrap install.
+    """
+    match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9_.-]*)", str(requirement))
+    return _canonical_dist_name(match.group(1)) if match else None
+
+
+def _pip_issue_owner(issue: str) -> str | None:
+    match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9_.-]*)\s", str(issue))
+    return _canonical_dist_name(match.group(1)) if match else None
+
+
+def _distribution_roots_from_imports(imports: Sequence[str]) -> set[str]:
+    roots: set[str] = set()
+    try:
+        mapping = metadata.packages_distributions()
+    except Exception:
+        return roots
+    for import_name in imports:
+        top_level = str(import_name).split(".", 1)[0]
+        for dist_name in mapping.get(top_level, ()) or ():
+            roots.add(_canonical_dist_name(dist_name))
+    return roots
+
+
+def _relevant_dependency_closure(
+    *,
+    extra_requirements: Sequence[str],
+    extra_imports: Sequence[str],
+) -> tuple[str, ...]:
+    """Return installed distributions relevant to scRareBench + user method.
+
+    We traverse installed requirement metadata from ``scrarebench`` and every
+    user-supplied requirement/import root. Optional-extra-only requirements are
+    skipped. Over-including an installed dependency is safe: it merely makes a
+    real conflict blocking rather than warning-only.
+    """
+    roots = {_canonical_dist_name("scrarebench")}
+    roots.update(
+        name for name in (_requirement_name(req) for req in extra_requirements)
+        if name
+    )
+    roots.update(_distribution_roots_from_imports(extra_imports))
+
+    seen: set[str] = set()
+    queue = list(sorted(roots))
+    while queue:
+        name = queue.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        try:
+            dist = metadata.distribution(name)
+        except metadata.PackageNotFoundError:
+            continue
+        except Exception:
+            continue
+
+        for requirement in dist.requires or ():
+            marker = requirement.partition(";")[2]
+            if marker and re.search(r"\bextra\s*==", marker):
+                continue
+            dep = _requirement_name(requirement)
+            if not dep or dep in seen:
+                continue
+            try:
+                metadata.distribution(dep)
+            except metadata.PackageNotFoundError:
+                continue
+            except Exception:
+                continue
+            queue.append(dep)
+
+    return tuple(sorted(seen))
 
 def setup_runtime(
     *,
@@ -185,10 +269,12 @@ def setup_runtime(
     already-installed versions. Optional ``constraint_files`` let a user or a
     release notebook provide an explicit reproducibility constraint set.
 
-    Dependency health is checked both before and after installation. Any new
-    ``pip check`` conflict introduced by the transaction is fatal, including
-    conflicts owned by transitive dependencies. Pre-existing conflicts are
-    reported but do not block the setup.
+    Dependency health is checked both before and after installation. New
+    conflicts are fatal only when their owning distribution belongs to the
+    installed dependency closure of scRareBench or the user-supplied method
+    requirements/imports. New conflicts belonging only to unrelated preinstalled
+    environment packages are reported as warnings. This keeps real transitive
+    method conflicts blocking without making unrelated Colab packages fatal.
     """
     extras = _normalize_items(extra_requirements)
     imports = _normalize_items(extra_imports)
@@ -232,15 +318,32 @@ def setup_runtime(
     pip_check_after = _pip_check_issues()
     before_set = set(pip_check_before)
     new_issues = tuple(issue for issue in pip_check_after if issue not in before_set)
-    if new_issues:
-        raise RuntimeError(
-            "New dependency conflicts were introduced by runtime installation:\n"
-            + "\n".join(new_issues)
+    relevant_packages = set(
+        _relevant_dependency_closure(
+            extra_requirements=extras,
+            extra_imports=imports,
         )
+    )
+    fatal_new_issues: list[str] = []
+    unrelated_new_issues: list[str] = []
+    for issue in new_issues:
+        owner = _pip_issue_owner(issue)
+        if owner is None or owner in relevant_packages:
+            fatal_new_issues.append(issue)
+        else:
+            unrelated_new_issues.append(issue)
+
+    if fatal_new_issues:
+        raise RuntimeError(
+            "Relevant dependency conflicts were introduced by runtime installation:\n"
+            + "\n".join(fatal_new_issues)
+        )
+
     preexisting_issues = tuple(issue for issue in pip_check_after if issue in before_set)
-    if preexisting_issues and not quiet:
-        print("pip check still reports pre-existing environment warnings; continuing:")
-        for line in preexisting_issues:
+    nonblocking_issues = tuple((*preexisting_issues, *unrelated_new_issues))
+    if nonblocking_issues and not quiet:
+        print("pip check reported non-blocking environment warnings; continuing:")
+        for line in nonblocking_issues:
             print("  -", line)
 
     after = _snapshot(anchors)
@@ -263,12 +366,13 @@ def setup_runtime(
         changed_anchors=changed,
         extra_requirements=extras,
         smoke_imports=smoke_imports,
-        pip_check_warnings=preexisting_issues,
+        pip_check_warnings=nonblocking_issues,
         base_requirements=tuple(base_requirements),
         user_constraint_files=user_constraints,
         pip_check_before=pip_check_before,
         pip_check_after=pip_check_after,
         new_pip_check_issues=new_issues,
+        relevant_dependency_packages=tuple(sorted(relevant_packages)),
     )
 
 
@@ -282,6 +386,12 @@ def print_install_report(report: RuntimeInstallReport) -> None:
     for name, version in sorted(report.anchors_after.items()):
         print(f"  - {name}=={version}")
     print("Fresh-process smoke imports:", ", ".join(report.smoke_imports))
-    print("New pip dependency conflicts introduced: none")
+    if report.new_pip_check_issues:
+        print(
+            "New unrelated pip conflicts reported as warnings:",
+            len(report.new_pip_check_issues),
+        )
+    else:
+        print("New pip dependency conflicts introduced: none")
     if report.pip_check_warnings:
-        print(f"Pre-existing environment pip warnings: {len(report.pip_check_warnings)}")
+        print(f"Non-blocking environment pip warnings: {len(report.pip_check_warnings)}")

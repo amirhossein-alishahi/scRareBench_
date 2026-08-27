@@ -9,7 +9,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-__version__ = "0.10.3"
+__version__ = "0.10.4"
 
 _EXPORTS: dict[str, tuple[str, str]] = {
     "DATASET_REGISTRY": (".datasets", "DATASET_REGISTRY"),

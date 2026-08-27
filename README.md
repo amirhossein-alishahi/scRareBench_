@@ -72,7 +72,7 @@ scRareBench requires **Python >=3.11**. Its benchmark backend is intentionally p
 ### Release install from GitHub
 
 ```bash
-python -m pip install "scrarebench @ git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.3"
+python -m pip install "scrarebench @ git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.4"
 ```
 
 ### Development install
@@ -100,7 +100,7 @@ The official notebooks bootstrap scRareBench with `--no-deps`, then install the 
 import subprocess
 import sys
 
-PACKAGE_URL = "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.3"
+PACKAGE_URL = "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.4"
 subprocess.check_call([
     sys.executable, "-m", "pip", "install", "-q", "--no-deps", PACKAGE_URL
 ])
@@ -625,7 +625,7 @@ scRareBench: load data
 
 These expose method-side preprocessing/training and report-generation details for reproducibility. They are **examples**, not method implementations shipped by scRareBench.
 
-Release notebooks install a fixed Git tag (`v0.10.3`), never the moving `main` branch.
+Release notebooks install a fixed Git tag (`v0.10.4`), never the moving `main` branch.
 
 ---
 
@@ -653,7 +653,7 @@ Use a new method/representation name or explicitly pass `overwrite=True` when re
 
 ### Colab dependency resolver/import failure
 
-Use the official release notebook/runtime version and `setup_runtime()` rather than manually upgrading NumPy/JAX/Torch in the middle of a running kernel. `setup_runtime()` fails if the install introduces a new `pip check` conflict or changes protected scientific anchors.
+Use the official release notebook/runtime version and `setup_runtime()` rather than manually upgrading NumPy/JAX/Torch in the middle of a running kernel. `setup_runtime()` blocks dependency conflicts that belong to scRareBench or the declared user-method dependency chain, preserves protected scientific anchors, and reports unrelated preinstalled-environment conflicts as warnings.
 
 ---
 

@@ -1,4 +1,4 @@
-# scRareBench v0.10.3 — documented Colab 2026.07 anchor constraints
+# scRareBench v0.10.4 — documented Colab 2026.07 anchor constraints
 # This is intentionally NOT a complete lockfile.
 # Official Colab 2026.07 runtime anchors:
 numpy==2.0.2

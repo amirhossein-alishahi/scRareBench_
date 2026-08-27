@@ -38,7 +38,7 @@
 - The runtime helper is method-agnostic.
 - User method dependencies are passed explicitly through `extra_requirements` / `extra_imports`.
 - ABI-sensitive packages already present in notebook environments are constrained during installation.
-- Any **new** `pip check` conflict introduced by runtime setup is fatal; pre-existing environment conflicts are reported separately.
+- New `pip check` conflicts are fatal when their owning distribution is in the installed dependency closure of scRareBench or the user-declared method dependencies. New conflicts belonging only to unrelated preinstalled environment packages are reported as warnings; pre-existing conflicts remain warnings as well.
 
 ## Deferred
 

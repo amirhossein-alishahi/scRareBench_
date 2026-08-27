@@ -252,9 +252,51 @@ def test_setup_runtime_fails_on_new_transitive_pip_conflict(monkeypatch):
     monkeypatch.setattr(mod, "_installed_version", lambda name: _project_version() if name == "scrarebench" else None)
     monkeypatch.setattr(mod, "_run", lambda cmd, quiet: None)
     monkeypatch.setattr(mod, "_fresh_process_smoke", lambda imports, quiet: None)
+    monkeypatch.setattr(
+        mod,
+        "_relevant_dependency_closure",
+        lambda **kwargs: ("scrarebench", "scrarep", "torchmetrics", "lightning"),
+    )
 
     with pytest.raises(RuntimeError, match="torchmetrics"):
         mod.setup_runtime(extra_requirements="scRareP==1.0")
+
+
+def test_setup_runtime_warns_on_new_unrelated_colab_conflict(monkeypatch):
+    mod = _module()
+    issue = (
+        "ibis-framework 9.5.0 has requirement toolz<1,>=0.11, "
+        "but you have toolz 1.1.0."
+    )
+    snapshots = iter([{"numpy": "2.0.2"}, {"numpy": "2.0.2"}])
+    checks = iter([(), (issue,)])
+    monkeypatch.setattr(mod, "_snapshot", lambda anchors: next(snapshots))
+    monkeypatch.setattr(mod, "_pip_check_issues", lambda: next(checks))
+    monkeypatch.setattr(mod, "_base_requirements_from_installed_package", lambda: ("scanpy>=1.10",))
+    monkeypatch.setattr(mod, "_installed_version", lambda name: _project_version() if name == "scrarebench" else None)
+    monkeypatch.setattr(mod, "_run", lambda cmd, quiet: None)
+    monkeypatch.setattr(mod, "_fresh_process_smoke", lambda imports, quiet: None)
+    monkeypatch.setattr(
+        mod,
+        "_relevant_dependency_closure",
+        lambda **kwargs: ("scrarebench", "scvi-tools", "scanpy", "torch"),
+    )
+
+    report = mod.setup_runtime(
+        extra_requirements="scvi-tools==1.4.3",
+        extra_imports="scvi",
+    )
+    assert report.new_pip_check_issues == (issue,)
+    assert report.pip_check_warnings == (issue,)
+
+
+def test_pip_issue_owner_and_requirement_name_are_canonicalized():
+    mod = _module()
+    assert mod._pip_issue_owner(
+        "ibis-framework 9.5.0 has requirement toolz<1,>=0.11, but you have toolz 1.1.0."
+    ) == "ibis-framework"
+    assert mod._requirement_name("scvi_tools==1.4.3") == "scvi-tools"
+    assert mod._requirement_name("Some.Package @ git+https://example.invalid/repo.git") == "some-package"
 
 
 def test_setup_runtime_preserves_preexisting_pip_conflict_as_warning(monkeypatch):

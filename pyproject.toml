@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scrarebench"
-version = "0.10.3"
+version = "0.10.4"
 description = "scIB-compatible and rare-cell-aware benchmarking for scRNA-seq integration latent spaces"
 readme = "README.md"
 requires-python = ">=3.11"
