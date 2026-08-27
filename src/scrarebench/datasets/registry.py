@@ -225,7 +225,7 @@ def list_datasets() -> list[dict[str, Any]]:
 def _fetch_json(url: str, *, timeout: int = 60) -> dict[str, Any]:
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "scRareBench/0.3 dataset-downloader"},
+        headers={"User-Agent": "scRareBench dataset-downloader"},
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.load(response)
@@ -241,7 +241,7 @@ def _download_url(url: str, destination: Path, *, force: bool = False, timeout: 
         partial.unlink()
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "scRareBench/0.3 dataset-downloader"},
+        headers={"User-Agent": "scRareBench dataset-downloader"},
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response, partial.open("wb") as target:
@@ -347,7 +347,7 @@ def _cellxgene_download_info(spec: DatasetSpec) -> dict[str, Any]:
             request = urllib.request.Request(
                 endpoint,
                 method="POST",
-                headers={"User-Agent": "scRareBench/0.3 dataset-downloader"},
+                headers={"User-Agent": "scRareBench dataset-downloader"},
             )
             with urllib.request.urlopen(request, timeout=60) as response:
                 payload = json.load(response)
@@ -430,7 +430,7 @@ def _download_external_dataset(
 
 def download_dataset(
     selector: int | str,
-    data_dir: str | Path,
+    data_dir: str | Path | None = None,
     *,
     force_download: bool = False,
     force_rebuild: bool = False,
@@ -446,6 +446,9 @@ def download_dataset(
     method-specific preprocessing.
     """
     spec = resolve_dataset(selector)
+    if data_dir is None:
+        from .metadata import default_data_dir
+        data_dir = default_data_dir()
     root = Path(data_dir).expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True)
 
@@ -469,7 +472,7 @@ def download_dataset(
 
 def load_dataset(
     selector: int | str,
-    data_dir: str | Path,
+    data_dir: str | Path | None = None,
     *,
     force_download: bool = False,
     force_rebuild: bool = False,
@@ -486,13 +489,18 @@ def load_dataset(
     only. The downloaded source H5AD remains unchanged.
     """
     spec = resolve_dataset(selector)
+    if data_dir is None:
+        from .metadata import default_data_dir
+        data_dir = default_data_dir()
     if spec.source_kind == "gse194122_benchmark" and backed is None:
-        return load_gse194122_benchmark(
-            data_dir,
-            force_download=force_download,
-            force_rebuild=force_rebuild,
+        adata = load_gse194122_benchmark(
+            data_dir, force_download=force_download, force_rebuild=force_rebuild,
             strict_expected_counts=strict_expected_counts,
         )
+        from .metadata import attach_builtin_dataset_metadata
+        path = Path(data_dir).expanduser().resolve() / PAPER_MAIN_H5AD_NAME
+        return attach_builtin_dataset_metadata(adata, dataset_key=spec.key, dataset_index=spec.index,
+            display_name=spec.display_name, source_path=path)
 
     path = download_dataset(
         selector,
@@ -509,16 +517,10 @@ def load_dataset(
     # External datasets are kept byte-for-byte as published on disk. Scenario
     # metadata is attached only to the in-memory AnnData returned by load_dataset.
     if spec.key in {
-        "mbdrc_renal_cortex",
-        "wu_breast_cancer_atlas",
-        "covid19_autoimmunity_pbmc",
+        "mbdrc_renal_cortex", "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc",
     }:
         from ..scenarios import annotate_registered_scenarios
-
-        annotate_registered_scenarios(
-            adata,
-            dataset_key=spec.key,
-            inplace=True,
-            strict_labels=True,
-        )
-    return adata
+        annotate_registered_scenarios(adata, dataset_key=spec.key, inplace=True, strict_labels=True)
+    from .metadata import attach_builtin_dataset_metadata
+    return attach_builtin_dataset_metadata(adata, dataset_key=spec.key, dataset_index=spec.index,
+        display_name=spec.display_name, source_path=path)

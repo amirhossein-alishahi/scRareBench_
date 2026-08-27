@@ -1,0 +1,26 @@
+# Python build/test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Notebook/editor artifacts
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# Local benchmark outputs and caches
+scrarebench_results/
+data/
+.cache/
+*.part

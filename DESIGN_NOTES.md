@@ -1,45 +1,49 @@
-# scRareBench 0.9.1 design decisions
+# scRareBench design decisions
 
-## Locked
+## Core contract
 
-- The package name remains `scRareBench` / `scrarebench`.
-- It is described as scIB-compatible, not as an official new scIB version.
-- The package evaluates a user-generated integration latent and does not reimplement integration methods.
-- The official GSE194122 benchmark applies cell subsetting only and preserves source-relative order.
-- `load_gse194122_benchmark()` is the preferred high-level dataset API; download and preparation remain separately callable for advanced users.
+- scRareBench benchmarks a **user-generated latent representation**; it does not implement integration methods.
+- The method boundary is `latent + cell identity`.
 - Dataset construction never performs method-specific normalization, HVG selection, scaling, PCA, graph construction, or dimensionality reduction.
-- A latent must have one row per benchmark cell; barcode verification is strict when supplied.
-- Official clustering is package-controlled: kNN=15, Euclidean, Leiden resolution=1.0, seed=0.
-- Standard evaluation uses pinned `scib-metrics==0.5.9` with every metric exposed by its Benchmarker, with both Leiden and KMeans NMI/ARI enabled.
-- Classic batch silhouette is added separately.
-- scIB aggregate scores remain separate from rare-cell summaries; no unvalidated extended total score is created.
-- Standard, paper-style, and rare-cell outputs are stored in separate namespaces and combined in one self-contained HTML report.
-- Metrics that cannot be inferred from a latent alone are listed explicitly as not applicable.
+- Cell alignment is strict when barcodes are supplied; DataFrame-indexed latent representations are preferred.
+- Package-controlled clustering uses kNN=15, Euclidean distance, Leiden resolution=1.0, and seed=0 by default.
+- The standard benchmark backend is pinned to `scib-metrics==0.5.9` for reproducibility.
+- scIB aggregate outputs remain separate from rare-cell summaries; no unvalidated composite score is created.
+- Metrics that cannot be inferred from the available latent/count contract are explicitly reported as not applicable.
+
+## High-level API
+
+- `load_dataset(selector)` loads a registered AnnData and attaches evaluation metadata in memory.
+- `register_dataset()` records the evaluation contract for a user AnnData without changing the method pipeline.
+- `benchmark_latent()` is the normal method-developer entry point: latent in, standardized benchmark and reports out.
+- `attach_latent()` / `EvaluationConfig` / `evaluate_latent()` remain available for low-level control.
+- There is no integration-method registry and no `methods/` package.
 
 ## Benchmark-only reference
 
-- The user’s preprocessing is never altered.
-- scRareBench independently creates a canonical reference from counts for standard metrics.
-- Default reference: GEX only, 4,000 batch-aware HVGs, normalize-total 10,000, log1p, PCA 50.
-- PCR comparison uses this canonical pre-integrated PCA and the submitted latent.
+- The user's preprocessing is never altered by scRareBench.
+- The scIB-compatible layer creates an independent reference from the configured count source.
+- The default reference workflow uses GEX features, 4,000 HVGs, library-size normalization to 10,000, `log1p`, and PCA with 50 components.
+- Dataset profiles may select either evaluation-batch-aware or global reference HVG selection.
 
-## Provisional
+## Rare-cell policy
 
-- Exact six-scenario biological mapping.
-- Parent/sibling lineage metadata for RM populations.
-- Failure-archetype thresholds.
-- Resolution-sweep interpretation beyond the paper reference resolution.
-- Future input contracts for corrected expression, cell-cycle scores, and pseudotime.
+- Rare metrics are computed only from rare/scenario metadata actually associated with the current dataset or explicitly supplied by the user.
+- A custom dataset never inherits the GSE194122 rare taxonomy implicitly.
+- DL/RM topology is not inferred automatically from abundance alone.
+- Failure-archetype thresholds remain diagnostic/provisional unless separately validated.
+
+## Runtime policy
+
+- The runtime helper is method-agnostic.
+- User method dependencies are passed explicitly through `extra_requirements` / `extra_imports`.
+- ABI-sensitive packages already present in notebook environments are constrained during installation.
+- Any **new** `pip check` conflict introduced by runtime setup is fatal; pre-existing environment conflicts are reported separately.
 
 ## Deferred
 
-- Built-in adapters for integration methods.
-- Corrected-expression and graph-only submissions.
-- A formal leaderboard.
-- Automatic DL/RM inference for custom datasets.
-- A composite score combining standard scIB aggregates and rare-cell preservation.
-
-
-## Method-independent runtime contract
-
-The benchmark package never depends on scVI, Harmony, or another integration implementation. The method boundary is the latent representation plus cell alignment. Notebook dependency installation is external to the package and uses the shared stdlib-only runtime installer so adding a new method does not require changing pyproject.toml or benchmark code.
+- built-in integration-method adapters;
+- corrected-expression or graph-only submissions;
+- a formal leaderboard;
+- automatic biological DL/RM inference for arbitrary custom datasets;
+- a composite score combining standard scIB aggregates with rare-cell preservation.

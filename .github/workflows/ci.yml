@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Upgrade build tooling
+        run: python -m pip install --upgrade pip build
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Dependency health
+        run: python -m pip check
+      - name: Compile Python source and examples
+        run: python -m compileall -q src tests scripts examples
+      - name: Validate release notebooks
+        run: python scripts/check_notebooks.py
+      - name: Run tests
+        run: python -m pytest
+      - name: Build wheel and sdist
+        run: python -m build
+      - name: Verify wheel contains package data
+        run: |
+          python - <<'PY'
+          import glob, zipfile
+          wheel = glob.glob('dist/*.whl')[0]
+          with zipfile.ZipFile(wheel) as z:
+              names = set(z.namelist())
+          assert 'scrarebench/config/default_failure_rules.yaml' in names
+          assert any(n.endswith('paper_scenarios.csv') for n in names)
+          assert 'scrarebench/runtime.py' in names
+          assert 'scrarebench/benchmark.py' in names
+          assert not any('/methods/' in n for n in names)
+          print('wheel package-data check: OK')
+          PY
+      - name: VCS bootstrap metadata smoke
+        run: |
+          python -m venv /tmp/scrarebench-vcs-smoke
+          /tmp/scrarebench-vcs-smoke/bin/python -m pip install -q --no-deps "git+file://${GITHUB_WORKSPACE}"
+          /tmp/scrarebench-vcs-smoke/bin/python - <<'PY'
+          from importlib import metadata
+          import scrarebench
+          import scrarebench.runtime
+          assert scrarebench.__version__ == metadata.version('scrarebench')
+          reqs = metadata.requires('scrarebench') or []
+          assert any(r.lower().startswith('scib-metrics==0.5.9') for r in reqs)
+          # Do not resolve lazy scientific exports before dependencies are installed.
+          for name in ('benchmark_latent', 'register_dataset', 'setup_runtime'):
+              assert name in scrarebench.__all__
+          assert callable(scrarebench.setup_runtime)  # runtime.py is stdlib-only by design
+          print('VCS bootstrap smoke: OK', scrarebench.__version__)
+          PY

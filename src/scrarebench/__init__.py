@@ -9,10 +9,18 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-__version__ = "0.9.2"
+__version__ = "0.10.3"
 
 _EXPORTS: dict[str, tuple[str, str]] = {
     "DATASET_REGISTRY": (".datasets", "DATASET_REGISTRY"),
+    "setup_runtime": (".runtime", "setup_runtime"),
+    "BenchmarkConfig": (".benchmark", "BenchmarkConfig"),
+    "BenchmarkResult": (".benchmark", "BenchmarkResult"),
+    "benchmark": (".benchmark", "benchmark"),
+    "benchmark_latent": (".benchmark", "benchmark_latent"),
+    "register_dataset": (".datasets", "register_dataset"),
+    "dataset_info": (".datasets", "dataset_info"),
+    "default_data_dir": (".datasets", "default_data_dir"),
     "download_dataset": (".datasets", "download_dataset"),
     "list_datasets": (".datasets", "list_datasets"),
     "load_dataset": (".datasets", "load_dataset"),

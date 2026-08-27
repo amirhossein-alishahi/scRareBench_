@@ -21,7 +21,7 @@ from .plotting import (
     write_sankey_html,
 )
 from .reporting import write_html_report
-from .scenarios import load_paper_scenario_table, scenario_table_from_adata
+from .scenarios import SIX_SCENARIOS, scenario_table_from_adata
 from .scib_backend import ScibEvaluationConfig, ScibEvaluationResult, run_scib_evaluation
 from .utils import slugify, write_json
 
@@ -39,6 +39,7 @@ class EvaluationConfig:
     distance_metric: str = "euclidean"
     random_state: int = 0
     overwrite: bool = False
+    rare_types: tuple[str, ...] | None = None
     scib: ScibEvaluationConfig = field(default_factory=ScibEvaluationConfig)
 
 
@@ -61,14 +62,15 @@ def _rare_summary(rare: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for metric in metrics:
         values = pd.to_numeric(rare[metric], errors="coerce")
+        valid = values.dropna()
         rows.append(
             {
                 "metric": metric,
-                "mean": float(values.mean()),
-                "median": float(values.median()),
-                "minimum": float(values.min()),
-                "maximum": float(values.max()),
-                "n_valid": int(values.notna().sum()),
+                "mean": float(valid.mean()) if len(valid) else np.nan,
+                "median": float(valid.median()) if len(valid) else np.nan,
+                "minimum": float(valid.min()) if len(valid) else np.nan,
+                "maximum": float(valid.max()) if len(valid) else np.nan,
+                "n_valid": int(len(valid)),
             }
         )
     failures = rare["failure_archetype"].value_counts(normalize=True)
@@ -149,7 +151,7 @@ def _write_package_versions(path: Path) -> None:
     packages = [
         "scrarebench", "scib-metrics", "scanpy", "anndata", "numpy",
         "pandas", "scikit-learn", "scipy", "matplotlib", "plotly",
-        "python-igraph", "leidenalg", "scvi-tools",
+        "python-igraph", "leidenalg",
     ]
     lines = [
         f"python={sys.version.split()[0]}",
@@ -233,13 +235,55 @@ def evaluate_latent(
     prediction_key = f"scrarebench_prediction_{slugify(config.method_name)}"
     adata.obs[prediction_key] = pd.Categorical(predictions)
 
-    if scenario_table is not None:
-        metadata = scenario_table.copy()
+    # Rare/scenario metadata must be explicitly associated with this dataset.
+    # Never infer a paper taxonomy merely because labels happen to share names.
+    metadata = scenario_table.copy() if scenario_table is not None else scenario_table_from_adata(adata)
+    if metadata is not None:
+        metadata = metadata.copy()
+        required = {"cell_type", "scenario", "distribution", "topology"}
+        missing = required.difference(metadata.columns)
+        if missing: raise ValueError(f"scenario_table is missing required columns: {sorted(missing)}")
+        for col in ("cell_type","scenario","distribution","topology","parent_type","curation_source"):
+            if col not in metadata.columns:
+                metadata[col] = ""
+            metadata[col] = metadata[col].fillna("").astype(str)
+
+        allowed_scenarios = set(SIX_SCENARIOS) | {"", "UNASSIGNED", "GR", "LE", "SR"}
+        invalid_scenarios = sorted(set(metadata["scenario"]) - allowed_scenarios)
+        if invalid_scenarios:
+            raise ValueError(f"Unknown scenario values: {invalid_scenarios}")
+        invalid_distributions = sorted(set(metadata["distribution"]) - {"", "GR", "LE", "SR"})
+        if invalid_distributions:
+            raise ValueError(f"Unknown distribution values: {invalid_distributions}")
+        invalid_topologies = sorted(set(metadata["topology"]) - {"", "DL", "RM"})
+        if invalid_topologies:
+            raise ValueError(f"Unknown topology values: {invalid_topologies}")
+        for row in metadata.itertuples(index=False):
+            scenario = str(row.scenario)
+            distribution = str(row.distribution)
+            topology = str(row.topology)
+            if scenario in SIX_SCENARIOS:
+                expected_distribution, expected_topology = scenario.split("-", 1)
+                if distribution and distribution != expected_distribution:
+                    raise ValueError(
+                        f"Scenario {scenario!r} conflicts with distribution {distribution!r}."
+                    )
+                if topology and topology != expected_topology:
+                    raise ValueError(
+                        f"Scenario {scenario!r} conflicts with topology {topology!r}."
+                    )
+            elif scenario in {"GR", "LE", "SR"} and distribution and distribution != scenario:
+                raise ValueError(
+                    f"Distribution-only scenario {scenario!r} conflicts with distribution {distribution!r}."
+                )
+    if config.rare_types is not None:
+        rare_types = list(dict.fromkeys(map(str, config.rare_types)))
+    elif metadata is not None:
+        rare_types = metadata["cell_type"].astype(str).tolist()
     else:
-        metadata = scenario_table_from_adata(adata)
-        if metadata is None:
-            metadata = load_paper_scenario_table()
-    rare_types = metadata["cell_type"].astype(str).tolist()
+        rare_types = []
+    unknown = sorted(set(rare_types).difference(set(map(str, y_true))))
+    if unknown: raise ValueError(f"rare_types contains labels absent from the dataset: {unknown}")
     all_per_type = per_type_metrics(
         y_true,
         clusters,
@@ -247,11 +291,13 @@ def evaluate_latent(
         batch_labels=adata.obs[config.batch_key].astype(str).to_numpy(),
     )
     rare = all_per_type[all_per_type["cell_type"].isin(rare_types)].copy()
-    rare = rare.merge(
-        metadata[["cell_type", "scenario", "distribution", "topology", "parent_type", "curation_source"]],
-        on="cell_type",
-        how="left",
-    )
+    cols=["cell_type","scenario","distribution","topology","parent_type","curation_source"]
+    if metadata is not None: rare=rare.merge(metadata[cols],on="cell_type",how="left")
+    else:
+        for col in cols[1:]: rare[col]=""
+    for col in cols[1:]:
+        if col not in rare.columns: rare[col]=""
+        rare[col]=rare[col].fillna("").astype(str)
     selected_rules = failure_rules or load_failure_rules()
     rare = classify_failure_archetypes(rare, rules=selected_rules)
 
@@ -307,12 +353,12 @@ def evaluate_latent(
     files["package_versions"] = reproducibility_dir / "package_versions.txt"
     _write_package_versions(files["package_versions"])
 
-    heatmap = plot_rare_metric_heatmap(rare, figures_dir / "rare_metric_heatmap.png")
-    precision_recall = plot_precision_recall(rare, figures_dir / "rare_precision_recall.png")
-    failure_counts = plot_failure_counts(rare, figures_dir / "failure_archetype_counts.png")
-    files["rare_metric_heatmap"] = heatmap
-    files["rare_precision_recall"] = precision_recall
-    files["failure_counts"] = failure_counts
+    heatmap = precision_recall = failure_counts = None
+    if not rare.empty:
+        heatmap = plot_rare_metric_heatmap(rare, figures_dir / "rare_metric_heatmap.png")
+        precision_recall = plot_precision_recall(rare, figures_dir / "rare_precision_recall.png")
+        failure_counts = plot_failure_counts(rare, figures_dir / "failure_archetype_counts.png")
+        files["rare_metric_heatmap"] = heatmap; files["rare_precision_recall"] = precision_recall; files["failure_counts"] = failure_counts
     sankey = write_sankey_html(y_true, predictions, rare_dir / "sankey_all.html")
     if sankey is not None:
         files["sankey"] = sankey
@@ -349,7 +395,7 @@ def evaluate_latent(
         "scib_backend_version": scib_result.backend_version if scib_result else "n/a",
     }
     report_path = output / "report.html"
-    report_figures: list[Path] = [heatmap, precision_recall, failure_counts]
+    report_figures: list[Path] = [p for p in (heatmap, precision_recall, failure_counts) if p is not None]
     if scib_result is not None:
         report_figures.insert(0, scib_result.files["metric_plot"])
     write_html_report(

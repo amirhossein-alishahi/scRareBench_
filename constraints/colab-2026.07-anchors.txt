@@ -1,0 +1,8 @@
+# scRareBench v0.10.3 — documented Colab 2026.07 anchor constraints
+# This is intentionally NOT a complete lockfile.
+# Official Colab 2026.07 runtime anchors:
+numpy==2.0.2
+torch==2.11.0
+jax==0.7.2
+# scRareBench benchmark backend validated/pinned by this release:
+scib-metrics==0.5.9

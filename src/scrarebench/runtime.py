@@ -1,9 +1,11 @@
-"""Notebook/runtime dependency setup for scRareBench integration methods.
+"""Generic notebook/runtime dependency setup for scRareBench.
 
-This module is deliberately stdlib-only so it can be imported immediately after
-installing the scRareBench package itself with ``pip --no-deps``.  It then
-installs the benchmark dependencies and the selected integration method in one
-constrained transaction while preserving already-loaded scientific ABI anchors.
+The runtime layer is deliberately method-agnostic. scRareBench owns only its
+benchmark dependencies; users own the implementation and dependencies of their
+integration method. ``setup_runtime`` can optionally install arbitrary user-
+supplied requirements in the same constrained transaction, without knowing or
+validating a method name.
+
 """
 from __future__ import annotations
 
@@ -19,69 +21,14 @@ from typing import Iterable, Mapping, Sequence
 
 
 DEFAULT_ANCHORS: tuple[str, ...] = (
-    "numpy",
-    "scipy",
-    "pandas",
-    "scikit-learn",
-    "matplotlib",
-    "h5py",
-    "numba",
-    "llvmlite",
-    "jax",
-    "jaxlib",
-    "torch",
+    "numpy", "scipy", "pandas", "scikit-learn", "matplotlib", "h5py",
+    "numba", "llvmlite", "jax", "jaxlib", "torch",
 )
 
 CORE_SMOKE_IMPORTS: tuple[str, ...] = (
-    "scrarebench",
-    "scrarebench.evaluation",
-    "scrarebench.scib_backend",
-    "scrarebench.reporting",
-    "scib_metrics",
+    "scrarebench", "scrarebench.evaluation", "scrarebench.scib_backend",
+    "scrarebench.reporting", "scib_metrics",
 )
-
-
-@dataclass(frozen=True)
-class MethodRuntimeProfile:
-    name: str
-    requirements: tuple[str, ...]
-    smoke_imports: tuple[str, ...]
-    environment_defaults: Mapping[str, str]
-
-
-_ACCELERATOR_ENV = {
-    "XLA_PYTHON_CLIENT_PREALLOCATE": "false",
-    "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.60",
-}
-
-METHOD_RUNTIME_PROFILES: dict[str, MethodRuntimeProfile] = {
-    "scvi": MethodRuntimeProfile(
-        name="scvi",
-        requirements=("scvi-tools==1.4.3",),
-        smoke_imports=("scvi",),
-        environment_defaults=_ACCELERATOR_ENV,
-    ),
-    "mrvi": MethodRuntimeProfile(
-        name="mrvi",
-        requirements=("scvi-tools==1.4.3",),
-        smoke_imports=("scvi", "scvi.external"),
-        environment_defaults=_ACCELERATOR_ENV,
-    ),
-    "harmony": MethodRuntimeProfile(
-        name="harmony",
-        requirements=("harmonypy==2.0.0",),
-        smoke_imports=("harmonypy",),
-        environment_defaults={},
-    ),
-}
-
-_METHOD_ALIASES = {
-    "scvi": "scvi",
-    "scvi-tools": "scvi",
-    "mrvi": "mrvi",
-    "harmony": "harmony",
-    "harmonypy": "harmony",
-}
 
 
 @dataclass(frozen=True)
@@ -91,26 +38,15 @@ class RuntimeInstallReport:
     anchors_before: dict[str, str]
     anchors_after: dict[str, str]
     changed_anchors: dict[str, tuple[str, str]]
-    method_requirements: tuple[str, ...]
+    extra_requirements: tuple[str, ...]
     smoke_imports: tuple[str, ...]
     pip_check_warnings: tuple[str, ...]
-    method: str | None = None
     base_requirements: tuple[str, ...] = ()
+    user_constraint_files: tuple[str, ...] = ()
+    pip_check_before: tuple[str, ...] = ()
+    pip_check_after: tuple[str, ...] = ()
+    new_pip_check_issues: tuple[str, ...] = ()
 
-
-def available_methods() -> tuple[str, ...]:
-    """Return the integration-method runtime profiles shipped with scRareBench."""
-    return tuple(METHOD_RUNTIME_PROFILES)
-
-
-def get_method_profile(method: str) -> MethodRuntimeProfile:
-    """Resolve a friendly method name/alias to its runtime profile."""
-    key = str(method).strip().lower()
-    canonical = _METHOD_ALIASES.get(key)
-    if canonical is None:
-        choices = ", ".join(available_methods())
-        raise ValueError(f"Unknown method {method!r}. Available methods: {choices}")
-    return METHOD_RUNTIME_PROFILES[canonical]
 
 
 def _installed_version(dist_name: str) -> str | None:
@@ -145,23 +81,17 @@ def _run(cmd: Sequence[str], *, quiet: bool) -> None:
 
 
 def _base_requirements_from_installed_package() -> tuple[str, ...]:
-    """Read mandatory scRareBench requirements from installed wheel/VCS metadata.
-
-    The notebook bootstrap installs scRareBench itself with ``--no-deps`` first,
-    which makes this stdlib-only module importable without importing Scanpy,
-    scIB, NumPy, or any method library.  Optional extras are intentionally
-    excluded here and installed through the selected method profile instead.
-    """
+    """Read mandatory scRareBench requirements from installed package metadata."""
     try:
         requirements = metadata.requires("scrarebench") or []
     except metadata.PackageNotFoundError as exc:
         raise RuntimeError(
             "scRareBench is not installed. Bootstrap it first, for example:\n"
             "  python -m pip install --no-deps "
-            "git+https://github.com/amirhossein-alishahi/scRareBench_.git@main"
+            "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.3"
         ) from exc
 
-    base = []
+    base: list[str] = []
     for requirement in requirements:
         marker = requirement.partition(";")[2]
         if marker and re.search(r"\bextra\s*==", marker):
@@ -177,7 +107,6 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.metrics import accuracy_score
 import pandas as pd
-
 x = csr_matrix(np.eye(2, dtype=float))
 assert x.shape == (2, 2)
 assert accuracy_score([0, 1], [0, 1]) == 1.0
@@ -195,40 +124,79 @@ print(json.dumps({"ok": True, "imports": mods}, sort_keys=True))
         _run(cmd, quiet=False)
 
 
-def _owner_name(requirement: str) -> str:
-    return re.split(r"[<>=!~ ;\[]", requirement, maxsplit=1)[0].strip().lower().replace("_", "-")
+def _normalize_items(value: str | Sequence[str]) -> tuple[str, ...]:
+    if isinstance(value, str):
+        value = (value,)
+    return tuple(str(x).strip() for x in value if str(x).strip())
 
 
-def install_notebook_runtime(
-    project_root: str | os.PathLike[str] | None = None,
+def _normalize_constraint_files(
+    value: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+) -> tuple[str, ...]:
+    if isinstance(value, (str, os.PathLike)):
+        value = (value,)
+    out: list[str] = []
+    for item in value:
+        path = Path(item).expanduser().resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"Constraint file not found: {path}")
+        out.append(str(path))
+    return tuple(out)
+
+
+def _pip_check_issues() -> tuple[str, ...]:
+    """Return normalized ``pip check`` issue lines without treating exit 1 as fatal.
+
+    ``pip check`` returns a non-zero status when conflicts exist. Runtime setup
+    compares the before/after sets so only conflicts newly introduced by this
+    installation are fatal. Pre-existing environment conflicts remain visible
+    as warnings.
+    """
+    proc = subprocess.run(
+        [sys.executable, "-m", "pip", "check"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    return tuple(
+        sorted({
+            line.strip()
+            for line in proc.stdout.splitlines()
+            if line.strip() and "No broken requirements found" not in line
+        })
+    )
+
+
+def setup_runtime(
     *,
-    method: str | None = None,
-    method_requirements: Sequence[str] | None = None,
-    method_imports: Sequence[str] | None = None,
+    extra_requirements: str | Sequence[str] = (),
+    extra_imports: str | Sequence[str] = (),
+    constraint_files: str | os.PathLike[str] | Sequence[str | os.PathLike[str]] = (),
+    environment_defaults: Mapping[str, str] | None = None,
     anchors: Sequence[str] = DEFAULT_ANCHORS,
     quiet: bool = True,
+    project_root: str | os.PathLike[str] | None = None,
 ) -> RuntimeInstallReport:
-    """Install a safe scRareBench notebook runtime.
+    """Install and validate a safe, method-agnostic scRareBench runtime.
 
-    Preferred usage is ``install_notebook_runtime(method="scvi")`` after a
-    ``--no-deps`` GitHub/PyPI bootstrap install of scRareBench.  ``project_root``
-    and explicit method requirements remain supported for older source-checkout
-    workflows.
+    ``extra_requirements`` and ``extra_imports`` are supplied by the user for
+    *their* method. scRareBench never interprets the method name or infers its
+    dependencies. Existing ABI-sensitive packages are constrained to their
+    already-installed versions. Optional ``constraint_files`` let a user or a
+    release notebook provide an explicit reproducibility constraint set.
+
+    Dependency health is checked both before and after installation. Any new
+    ``pip check`` conflict introduced by the transaction is fatal, including
+    conflicts owned by transitive dependencies. Pre-existing conflicts are
+    reported but do not block the setup.
     """
-    profile = get_method_profile(method) if method is not None else None
-    if method_requirements is None:
-        resolved_method_requirements = profile.requirements if profile else ()
-    else:
-        resolved_method_requirements = tuple(method_requirements)
-    if method_imports is None:
-        resolved_method_imports = profile.smoke_imports if profile else ()
-    else:
-        resolved_method_imports = tuple(method_imports)
+    extras = _normalize_items(extra_requirements)
+    imports = _normalize_items(extra_imports)
+    user_constraints = _normalize_constraint_files(constraint_files)
+    for key, value in (environment_defaults or {}).items():
+        os.environ.setdefault(str(key), str(value))
 
-    if profile:
-        for key, value in profile.environment_defaults.items():
-            os.environ.setdefault(key, value)
-
+    pip_check_before = _pip_check_issues()
     before = _snapshot(anchors)
     constraints_dir = Path(tempfile.mkdtemp(prefix="scrarebench_constraints_"))
     constraints_file = constraints_dir / "anchors.txt"
@@ -237,7 +205,7 @@ def install_notebook_runtime(
     if project_root is None:
         base_requirements = _base_requirements_from_installed_package()
         install_target = f"installed scrarebench=={_installed_version('scrarebench') or 'unknown'}"
-        targets = [*base_requirements, *resolved_method_requirements]
+        targets = [*base_requirements, *extras]
     else:
         root = Path(project_root).expanduser().resolve()
         pyproject = root / "pyproject.toml"
@@ -247,47 +215,32 @@ def install_notebook_runtime(
         target = wheels[-1] if wheels else root
         install_target = str(target)
         base_requirements = ()
-        targets = [str(target), *resolved_method_requirements]
+        targets = [str(target), *extras]
 
     cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "--upgrade-strategy",
-        "only-if-needed",
-        "--prefer-binary",
-        "--constraint",
-        str(constraints_file),
-        *targets,
+        sys.executable, "-m", "pip", "install",
+        "--upgrade-strategy", "only-if-needed", "--prefer-binary",
+        "--constraint", str(constraints_file),
     ]
+    for user_constraint in user_constraints:
+        cmd.extend(["--constraint", user_constraint])
+    cmd.extend(targets)
     if quiet:
         cmd.insert(4, "-q")
     _run(cmd, quiet=quiet)
 
-    check_cmd = [sys.executable, "-m", "pip", "check"]
-    proc = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    check_lines = tuple(
-        line.strip()
-        for line in proc.stdout.splitlines()
-        if line.strip() and "No broken requirements found" not in line
-    )
-
-    relevant_owners = {
-        "scrarebench",
-        *(_owner_name(x) for x in base_requirements),
-        *(_owner_name(x) for x in resolved_method_requirements),
-    }
-    relevant_issues: list[str] = []
-    unrelated_issues: list[str] = []
-    for line in check_lines:
-        owner = line.split()[0].lower().replace("_", "-") if line.split() else ""
-        (relevant_issues if owner in relevant_owners else unrelated_issues).append(line)
-    if relevant_issues:
-        raise RuntimeError("Relevant dependency conflicts after installation:\n" + "\n".join(relevant_issues))
-    if unrelated_issues and not quiet:
-        print("pip check reported unrelated preinstalled-environment warnings; continuing:")
-        for line in unrelated_issues:
+    pip_check_after = _pip_check_issues()
+    before_set = set(pip_check_before)
+    new_issues = tuple(issue for issue in pip_check_after if issue not in before_set)
+    if new_issues:
+        raise RuntimeError(
+            "New dependency conflicts were introduced by runtime installation:\n"
+            + "\n".join(new_issues)
+        )
+    preexisting_issues = tuple(issue for issue in pip_check_after if issue in before_set)
+    if preexisting_issues and not quiet:
+        print("pip check still reports pre-existing environment warnings; continuing:")
+        for line in preexisting_issues:
             print("  -", line)
 
     after = _snapshot(anchors)
@@ -298,47 +251,37 @@ def install_notebook_runtime(
     }
     if changed:
         details = ", ".join(f"{k}: {a} -> {b}" for k, (a, b) in changed.items())
-        raise RuntimeError(
-            "Scientific ABI anchor packages changed unexpectedly during installation: " + details
-        )
+        raise RuntimeError("Scientific ABI anchor packages changed unexpectedly during installation: " + details)
 
-    smoke_imports = tuple(dict.fromkeys((*CORE_SMOKE_IMPORTS, *resolved_method_imports)))
+    smoke_imports = tuple(dict.fromkeys((*CORE_SMOKE_IMPORTS, *imports)))
     _fresh_process_smoke(smoke_imports, quiet=quiet)
-
     return RuntimeInstallReport(
         install_target=install_target,
         constraints_file=str(constraints_file),
         anchors_before=before,
         anchors_after=after,
         changed_anchors=changed,
-        method_requirements=tuple(resolved_method_requirements),
+        extra_requirements=extras,
         smoke_imports=smoke_imports,
-        pip_check_warnings=tuple(unrelated_issues),
-        method=profile.name if profile else method,
+        pip_check_warnings=preexisting_issues,
         base_requirements=tuple(base_requirements),
+        user_constraint_files=user_constraints,
+        pip_check_before=pip_check_before,
+        pip_check_after=pip_check_after,
+        new_pip_check_issues=new_issues,
     )
-
-
-def setup_notebook(
-    method: str,
-    *,
-    anchors: Sequence[str] = DEFAULT_ANCHORS,
-    quiet: bool = True,
-) -> RuntimeInstallReport:
-    """User-facing notebook helper for a registered integration method."""
-    return install_notebook_runtime(method=method, anchors=anchors, quiet=quiet)
 
 
 def print_install_report(report: RuntimeInstallReport) -> None:
     print("scRareBench runtime installation passed.")
-    if report.method:
-        print("Method profile:", report.method)
     print("Install target:", report.install_target)
-    print("Method requirements:", ", ".join(report.method_requirements) or "none")
+    print("User-supplied extra requirements:", ", ".join(report.extra_requirements) or "none")
+    if report.user_constraint_files:
+        print("User constraint files:", ", ".join(report.user_constraint_files))
     print("Preserved scientific anchors:")
     for name, version in sorted(report.anchors_after.items()):
         print(f"  - {name}=={version}")
     print("Fresh-process smoke imports:", ", ".join(report.smoke_imports))
-    print("Relevant pip dependency check: OK")
+    print("New pip dependency conflicts introduced: none")
     if report.pip_check_warnings:
-        print(f"Unrelated preinstalled-environment pip warnings: {len(report.pip_check_warnings)}")
+        print(f"Pre-existing environment pip warnings: {len(report.pip_check_warnings)}")

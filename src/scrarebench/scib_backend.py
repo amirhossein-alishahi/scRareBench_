@@ -291,7 +291,7 @@ def prepare_scib_reference(
 
 def _status_catalog() -> pd.DataFrame:
     rows = [
-        ("Isolated labels", "Bio conservation", "scib-metrics", "supported", "Current scib-metrics isolated-label score."),
+        ("Isolated labels", "Bio conservation", "scib-metrics", "supported", "Validated scib-metrics isolated-label score."),
         ("Leiden NMI", "Bio conservation", "scib-metrics", "supported", "Leiden clustering NMI from scib-metrics."),
         ("Leiden ARI", "Bio conservation", "scib-metrics", "supported", "Leiden clustering ARI from scib-metrics."),
         ("KMeans NMI", "Bio conservation", "scib-metrics", "supported", "K-means clustering NMI from scib-metrics."),
@@ -363,7 +363,7 @@ def run_scib_evaluation(
     output_dir: str | Path,
     config: ScibEvaluationConfig,
 ) -> ScibEvaluationResult | None:
-    """Run the complete current scib-metrics benchmark plus latent-compatible supplements."""
+    """Run the validated pinned scib-metrics benchmark plus latent-compatible supplements."""
     if not config.enabled:
         return None
     output = Path(output_dir).expanduser().resolve()

@@ -3,10 +3,10 @@ import subprocess
 from pathlib import Path
 
 from scrarebench.reporting import write_interactive_report
-from test_dashboard_v060 import DemoAdata, make_result
+from test_dashboard_payload import DemoAdata, make_result
 
 
-def test_v080_interaction_contract(tmp_path: Path):
+def test_dashboard_interaction_contract(tmp_path: Path):
     path = write_interactive_report(DemoAdata(), make_result(tmp_path), tmp_path / "dashboard.html", representation_key="X_test")
     text = path.read_text(encoding="utf-8")
 

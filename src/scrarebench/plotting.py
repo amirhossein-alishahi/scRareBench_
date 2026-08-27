@@ -121,7 +121,7 @@ def plot_scib_metric_scores(
     aggregates: pd.DataFrame,
     output_path: str | Path,
 ) -> Path:
-    """Plot all current scIB-compatible metrics and their aggregate scores."""
+    """Plot all validated scIB-compatible metrics and their aggregate scores."""
     metric_frame = metrics.copy()
     aggregate_frame = aggregates.copy()
     metric_frame = metric_frame[np.isfinite(pd.to_numeric(metric_frame["value"], errors="coerce"))]

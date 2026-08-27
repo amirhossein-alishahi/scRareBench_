@@ -76,7 +76,7 @@ def make_result(tmp_path: Path):
     )
 
 
-def test_v060_dashboard_features_and_js(tmp_path: Path):
+def test_dashboard_payload_features_and_js(tmp_path: Path):
     html_path = write_interactive_report(DemoAdata(), make_result(tmp_path), tmp_path / "dashboard.html", representation_key="X_test")
     text = html_path.read_text(encoding="utf-8")
     for token in [

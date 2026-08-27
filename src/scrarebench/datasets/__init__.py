@@ -1,3 +1,4 @@
+from .metadata import (BUILTIN_BENCHMARK_PROFILES, BenchmarkDatasetProfile, dataset_info, default_data_dir, register_dataset)
 from .gse194122 import (
     GSE194122_SOURCE_URL,
     PAPER_KEEP_BATCHES,
@@ -34,4 +35,5 @@ __all__ = [
     "load_dataset",
     "list_datasets",
     "resolve_dataset",
+    "BenchmarkDatasetProfile", "BUILTIN_BENCHMARK_PROFILES", "default_data_dir", "dataset_info", "register_dataset",
 ]
