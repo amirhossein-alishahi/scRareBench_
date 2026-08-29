@@ -65,10 +65,14 @@ jobs:
               if marker not in text:
                   return None
               tail = text.split(marker, 1)[1]
-              lines = [line.strip() for line in tail.splitlines() if line.strip()]
-              payload = ''.join(lines)
-              if not re.fullmatch(r'[A-Za-z0-9+/=]+', payload):
-                  raise RuntimeError(f'Non-base64 content after {marker}')
+              payload_lines = [
+                  line.strip()
+                  for line in tail.splitlines()
+                  if re.fullmatch(r'[A-Za-z0-9+/=]+', line.strip() or ' ')
+              ]
+              payload = ''.join(payload_lines)
+              if not payload:
+                  raise RuntimeError(f'No base64 payload found after {marker}')
               return payload
 
           chunks = {1: payload_after(issue.get('body') or '', 'PART=1/5')}
