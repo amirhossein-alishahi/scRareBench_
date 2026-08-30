@@ -85,7 +85,7 @@ jobs:
           with zipfile.ZipFile(wheel) as zf:
               names = set(zf.namelist())
           required = {
-              'scrarebench/highlevel.py', 'scrarebench/multiseed.py', 'scrarebench/delivery.py',
+              'scrarebench/benchmark.py', 'scrarebench/multiseed.py', 'scrarebench/delivery.py',
               'scrarebench/metric_registry.py', 'scrarebench/assets/dashboard.css',
               'scrarebench/assets/dashboard.js', 'scrarebench/assets/dashboard_template.html',
           }
@@ -98,8 +98,8 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          from scrarebench import MethodSpec, benchmark_method, benchmark_latent
-          assert MethodSpec and callable(benchmark_method) and callable(benchmark_latent)
+          from scrarebench import MethodSpec, MethodOutput, benchmark_method, benchmark_latent
+          assert MethodSpec and MethodOutput and callable(benchmark_method) and callable(benchmark_latent)
           p = Path('notebooks/scRareBench_CustomMethod_HighLevel_Colab.ipynb')
           code = '\n'.join(''.join(c.get('source', [])) for c in json.loads(p.read_text())['cells'] if c.get('cell_type') == 'code')
           for token in ('MethodSpec', 'MethodOutput', 'benchmark_method', 'METHOD_DEPENDENCIES', 'runner=run_user_method'):
