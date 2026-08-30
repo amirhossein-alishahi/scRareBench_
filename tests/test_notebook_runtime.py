@@ -220,7 +220,7 @@ def test_developer_notebooks_use_integrated_main_and_remain_method_agnostic():
     for path in DEVELOPER_NOTEBOOKS:
         text = path.read_text(encoding="utf-8")
         code = _notebook_code(path)
-        assert "scRareBench_.git@main" in text
+        assert f"scRareBench_.git@v{_project_version()}" in text
         assert "scrarebench.methods" not in code
         assert "setup_runtime(" in code
 
@@ -376,7 +376,7 @@ def test_release_version_is_coherent_across_package_and_citation():
     for path in RELEASE_NOTEBOOKS:
         assert f"@v{version}" in path.read_text(encoding="utf-8")
     for path in DEVELOPER_NOTEBOOKS:
-        assert "@main" in path.read_text(encoding="utf-8")
+        assert f"@v{version}" in path.read_text(encoding="utf-8")
 
 
 def test_no_legacy_version_markers_in_public_notebook_filenames():

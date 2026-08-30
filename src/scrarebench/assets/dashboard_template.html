@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>__DASHBOARD_CSS__</style>
+</head>
+<body>
+<script>__PLOTLYJS__</script>
+<header><div class="head"><div class="eyebrow">scRareBench</div><h1>__TITLE__</h1><p>Standalone benchmark explorer for integration quality, scIB-compatible scores, rare-population preservation, clustering outcomes, and failure patterns. Canonical benchmark scores remain immutable; sensitivity and what-if controls are explicitly exploratory and never overwrite reported results.</p></div></header>
+<div class="shell">
+<script id="scrarebench-report-data" type="application/json">__REPORT_JSON__</script>
+<div id="seedManager" class="seed-manager"></div>
+<div id="warning" class="interpret-note"><b>Interpretation note.</b> Failure-archetype assignments use provisional scRareBench thresholds. Treat them as diagnostic annotations; threshold sensitivity should be assessed before manuscript-level conclusions.</div>
+<nav id="tabs" class="tabs" role="tablist" aria-label="Benchmark report sections"></nav>
+<div id="panels"></div>
+</div>
+<div id="figModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Expanded figure"><div class="modal-card"><div class="modal-head"><button id="modalPrev" title="Previous figure" aria-label="Previous figure">←</button><div id="modalTitle" class="modal-title">Figure</div><button id="zoomOut" title="Zoom out">−</button><button id="zoomFit" title="Fit figure to viewer">Fit</button><button id="zoomActual" title="Show figure at 100% of original pixels">100%</button><span id="zoomReadout" class="zoom-readout" aria-live="polite">Fit</span><button id="zoomIn" title="Zoom in">+</button><button id="modalDownload" title="Download original figure">Download original</button><button id="modalNext" title="Next figure" aria-label="Next figure">→</button><button id="modalClose" title="Close" aria-label="Close figure">×</button></div><div id="modalStage" class="modal-stage"><div class="modal-stage-inner"><img id="modalImg" alt="Expanded figure"></div></div><div id="modalFoot" class="modal-foot"></div></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>__DASHBOARD_JS__</script>
+</body>
+</html>

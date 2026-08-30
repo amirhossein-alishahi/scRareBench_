@@ -342,14 +342,17 @@ def infer_distribution_classes(
         global_abundance = float(cell_counts.sum() / total_cells) if total_cells else np.nan
         max_local = float(fractions.loc[present, cell_type].max()) if n_present else 0.0
         mean_local = float(fractions.loc[present, cell_type].mean()) if n_present else 0.0
-        if global_abundance < global_abundance_threshold and batch_fraction > batch_fraction_threshold:
-            distribution = "GR"
-        elif batch_fraction <= batch_fraction_threshold and max_local >= local_abundance_threshold:
-            distribution = "LE"
-        elif batch_fraction <= batch_fraction_threshold and max_local < local_abundance_threshold:
-            distribution = "SR"
-        else:
+        # All rare distribution classes must pass the global rarity gate first.
+        # Without this guard, a large batch-restricted population could be
+        # incorrectly labelled LE/SR solely because it appears in few batches.
+        if global_abundance >= global_abundance_threshold:
             distribution = "COMMON_OR_UNASSIGNED"
+        elif batch_fraction > batch_fraction_threshold:
+            distribution = "GR"
+        elif max_local >= local_abundance_threshold:
+            distribution = "LE"
+        else:
+            distribution = "SR"
         rows.append(
             {
                 "cell_type": cell_type,

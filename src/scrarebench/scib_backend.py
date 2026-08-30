@@ -12,6 +12,7 @@ import yaml
 
 from .exceptions import MissingDependencyError
 from .plotting import plot_scib_metric_scores
+from .utils import write_json
 
 
 SCIB_METRICS_BACKEND = "scib-metrics"
@@ -55,7 +56,7 @@ def _scib_runtime_compatibility() -> Iterator[list[str]]:
     adjustments: list[str] = []
     added_value_counts = False
     if not hasattr(pd, "value_counts"):
-        setattr(pd, "value_counts", _legacy_pandas_value_counts)
+        pd.value_counts = _legacy_pandas_value_counts  # type: ignore[attr-defined]
         added_value_counts = True
         adjustments.append(
             "pandas>=3 compatibility: temporarily mapped pandas.value_counts to Series.value_counts "
@@ -65,7 +66,7 @@ def _scib_runtime_compatibility() -> Iterator[list[str]]:
         yield adjustments
     finally:
         if added_value_counts and getattr(pd, "value_counts", None) is _legacy_pandas_value_counts:
-            delattr(pd, "value_counts")
+            del pd.value_counts  # type: ignore[attr-defined]
 
 
 def _runtime_versions(backend_version: str) -> dict[str, str]:
@@ -113,6 +114,8 @@ class ScibEvaluationConfig:
     min_max_scale: bool = False
     include_silhouette_batch: bool = True
     require_backend: bool = True
+    canonical: bool = True
+    allow_hvg_fallback: bool = False
 
 
 @dataclass
@@ -208,9 +211,16 @@ def prepare_scib_reference(
     mask = _feature_mask(adata)
     source_name = "X"
     source = adata.X
-    if config.count_layer and config.count_layer in adata.layers:
-        source_name = f"layers/{config.count_layer}"
-        source = adata.layers[config.count_layer]
+    if config.count_layer:
+        if config.count_layer in adata.layers:
+            source_name = f"layers/{config.count_layer}"
+            source = adata.layers[config.count_layer]
+        elif config.canonical:
+            raise KeyError(
+                f"Canonical scIB reference requires raw/count-like input in "
+                f"adata.layers[{config.count_layer!r}], but that layer is missing. "
+                "Set canonical=False only for an explicitly non-canonical exploratory run."
+            )
     matrix = _copy_matrix(source[:, mask])
     var = adata.var.iloc[np.flatnonzero(mask)].copy()
     obs = adata.obs.copy()
@@ -231,8 +241,14 @@ def prepare_scib_reference(
     try:
         sc.pp.highly_variable_genes(reference, **hvg_kwargs)
         hvg_method = config.hvg_flavor
-    except (ImportError, ModuleNotFoundError):
-        # A documented fallback for environments without scikit-misc.
+        hvg_fallback_used = False
+    except (ImportError, ModuleNotFoundError) as exc:
+        if config.canonical or not config.allow_hvg_fallback:
+            raise MissingDependencyError(
+                "Canonical scIB reference HVG selection failed. Install scikit-misc "
+                "for seurat_v3, or explicitly use canonical=False with "
+                "allow_hvg_fallback=True for exploratory/non-canonical evaluation."
+            ) from exc
         sc.pp.normalize_total(reference, target_sum=config.target_sum)
         sc.pp.log1p(reference)
         fallback_kwargs: dict[str, Any] = {
@@ -244,6 +260,7 @@ def prepare_scib_reference(
             fallback_kwargs["batch_key"] = hvg_batch_key
         sc.pp.highly_variable_genes(reference, **fallback_kwargs)
         hvg_method = "seurat_fallback"
+        hvg_fallback_used = True
         already_normalized = True
     else:
         already_normalized = False
@@ -284,6 +301,8 @@ def prepare_scib_reference(
         "preintegrated_embedding_key": PREINTEGRATED_KEY,
         "integrated_embedding_key": representation_key,
         "cell_order_preserved": bool(reference.obs_names.equals(adata.obs_names)),
+        "canonical_benchmark": bool(config.canonical and not hvg_fallback_used),
+        "hvg_fallback_used": bool(hvg_fallback_used),
     }
     reference.uns["scrarebench_scib_reference"] = reference_config
     return reference, reference_config
@@ -291,7 +310,7 @@ def prepare_scib_reference(
 
 def _status_catalog() -> pd.DataFrame:
     rows = [
-        ("Isolated labels", "Bio conservation", "scib-metrics", "supported", "Validated scib-metrics isolated-label score."),
+        ("Isolated labels", "Bio conservation", "scib-metrics", "supported", "Current scib-metrics isolated-label score."),
         ("Leiden NMI", "Bio conservation", "scib-metrics", "supported", "Leiden clustering NMI from scib-metrics."),
         ("Leiden ARI", "Bio conservation", "scib-metrics", "supported", "Leiden clustering ARI from scib-metrics."),
         ("KMeans NMI", "Bio conservation", "scib-metrics", "supported", "K-means clustering NMI from scib-metrics."),
@@ -363,11 +382,20 @@ def run_scib_evaluation(
     output_dir: str | Path,
     config: ScibEvaluationConfig,
 ) -> ScibEvaluationResult | None:
-    """Run the validated pinned scib-metrics benchmark plus latent-compatible supplements."""
-    if not config.enabled:
-        return None
+    """Run the current scib-metrics benchmark and always preserve execution status."""
     output = Path(output_dir).expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
+    status_path = output / "scib_status.json"
+    if not config.enabled:
+        write_json(status_path, {
+            "attempted": False,
+            "success": False,
+            "status": "disabled",
+            "message": "scIB-compatible evaluation was explicitly disabled.",
+            "config": asdict(config),
+        })
+        return None
+
     try:
         scib_metrics, Benchmarker, BioConservation, BatchCorrection, backend_version = _require_scib_metrics()
         reference, reference_config = prepare_scib_reference(
@@ -405,44 +433,27 @@ def run_scib_evaluation(
         )
         with _scib_runtime_compatibility() as compatibility_adjustments:
             benchmarker.benchmark()
-        wide = benchmarker.get_results(
-            min_max_scale=config.min_max_scale,
-            clean_names=True,
-        )
+        wide = benchmarker.get_results(min_max_scale=config.min_max_scale, clean_names=True)
         metrics_long, aggregates = _parse_benchmarker_results(
-            wide,
-            representation_key=representation_key,
-            backend_version=backend_version,
+            wide, representation_key=representation_key, backend_version=backend_version
         )
 
         if config.include_silhouette_batch:
-            batch_asw = float(
-                scib_metrics.silhouette_batch(
-                    np.asarray(reference.obsm[representation_key]),
-                    np.asarray(reference.obs[label_key]),
-                    np.asarray(reference.obs[batch_key]),
-                    rescale=True,
-                )
-            )
-            metrics_long = pd.concat(
-                [
-                    metrics_long,
-                    pd.DataFrame(
-                        [
-                            {
-                                "method": representation_key,
-                                "metric": "Silhouette batch",
-                                "value": batch_asw,
-                                "metric_type": "Batch correction supplement",
-                                "backend": SCIB_METRICS_BACKEND,
-                                "backend_version": backend_version,
-                                "status": "computed" if np.isfinite(batch_asw) else "failed",
-                            }
-                        ]
-                    ),
-                ],
-                ignore_index=True,
-            )
+            batch_asw = float(scib_metrics.silhouette_batch(
+                np.asarray(reference.obsm[representation_key]),
+                np.asarray(reference.obs[label_key]),
+                np.asarray(reference.obs[batch_key]),
+                rescale=True,
+            ))
+            metrics_long = pd.concat([metrics_long, pd.DataFrame([{
+                "method": representation_key,
+                "metric": "Silhouette batch",
+                "value": batch_asw,
+                "metric_type": "Batch correction supplement",
+                "backend": SCIB_METRICS_BACKEND,
+                "backend_version": backend_version,
+                "status": "computed" if np.isfinite(batch_asw) else "failed",
+            }])], ignore_index=True)
 
         status = _status_catalog()
         computed_names = set(metrics_long["metric"].astype(str)) | set(aggregates["metric"].astype(str))
@@ -457,6 +468,7 @@ def run_scib_evaluation(
             "metric_status": output / "scib_metric_status.csv",
             "reference_config": output / "scib_reference_config.yaml",
             "metric_plot": output / "scib_metric_scores.png",
+            "status": status_path,
         }
         wide.to_csv(files["results_wide"], index=True)
         metrics_long.to_csv(files["metrics_long"], index=False)
@@ -472,16 +484,23 @@ def run_scib_evaluation(
             "runtime_compatibility_adjustments": compatibility_adjustments,
             "compatibility_note": (
                 "scRareBench uses an automatic, scoped runtime compatibility bridge for known "
-                "upstream API removals (for example pandas 3 removing pandas.value_counts). "
-                "The bridge is activated only when required and does not change metric definitions. "
-                "Values are produced by scib-metrics and must not be numerically compared with the "
-                "legacy scib repository without qualification."
+                "upstream API removals. The bridge is activated only when required and does not "
+                "change metric definitions. Values are produced by scib-metrics and must not be "
+                "numerically compared with the legacy scib repository without qualification."
             ),
         }
-        files["reference_config"].write_text(
-            yaml.safe_dump(reference_payload, sort_keys=False), encoding="utf-8"
-        )
+        files["reference_config"].write_text(yaml.safe_dump(reference_payload, sort_keys=False), encoding="utf-8")
         plot_scib_metric_scores(metrics_long, aggregates, files["metric_plot"])
+        write_json(status_path, {
+            "attempted": True,
+            "success": True,
+            "status": "computed",
+            "message": "scIB-compatible evaluation completed successfully.",
+            "backend": SCIB_METRICS_BACKEND,
+            "backend_version": backend_version,
+            "canonical_benchmark": bool(reference_config.get("canonical_benchmark", False)),
+            "config": asdict(config),
+        })
         return ScibEvaluationResult(
             backend=SCIB_METRICS_BACKEND,
             backend_version=backend_version,
@@ -492,7 +511,17 @@ def run_scib_evaluation(
             reference_config=reference_payload,
             files=files,
         )
-    except Exception:
+    except Exception as exc:
+        write_json(status_path, {
+            "attempted": True,
+            "success": False,
+            "status": "failed",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+            "message": "scIB-compatible evaluation failed; see error_type/error_message.",
+            "config": asdict(config),
+        })
         if config.require_backend:
             raise
         return None
+

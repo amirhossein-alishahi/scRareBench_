@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from .constants import DEFAULT_BENCHMARK_SEED
 from .exceptions import MissingDependencyError
 from .utils import slugify
 
@@ -16,6 +17,8 @@ class ClusteringResult:
     n_neighbors: int
     metric: str
     random_state: int
+    leiden_flavor: str
+    leiden_n_iterations: int
 
 
 def _require_scanpy():
@@ -34,10 +37,18 @@ def run_standard_clustering(
     n_neighbors: int = 15,
     metric: str = "euclidean",
     resolutions: Iterable[float] = (1.0,),
-    random_state: int = 0,
+    random_state: int = DEFAULT_BENCHMARK_SEED,
+    leiden_flavor: str = "igraph",
+    leiden_n_iterations: int = 2,
     overwrite: bool = False,
 ) -> ClusteringResult:
-    """Build an isolated neighbor graph and deterministic Leiden clusters."""
+    """Build an isolated neighbor graph and deterministic Leiden clusters.
+
+    scRareBench no longer silently switches Leiden implementations.  The exact
+    flavor and iteration count are part of the benchmark contract and are written
+    to run metadata so two environments cannot produce different partitions under
+    an apparently identical configuration.
+    """
     sc = _require_scanpy()
     if representation_key not in adata.obsm:
         raise KeyError(f"adata.obsm['{representation_key}'] is missing")
@@ -60,21 +71,15 @@ def run_standard_clustering(
         cluster_key = f"scrarebench_leiden_{slug}_r{token}"
         if cluster_key in adata.obs and not overwrite:
             raise KeyError(f"Cluster key '{cluster_key}' already exists")
-        kwargs = dict(
+        sc.tl.leiden(
+            adata,
+            flavor=leiden_flavor,
+            n_iterations=int(leiden_n_iterations),
             resolution=value,
             random_state=random_state,
             key_added=cluster_key,
             neighbors_key=neighbors_key,
         )
-        try:
-            sc.tl.leiden(
-                adata,
-                flavor="igraph",
-                n_iterations=2,
-                **kwargs,
-            )
-        except TypeError:  # compatibility fallback
-            sc.tl.leiden(adata, **kwargs)
         cluster_keys[value] = cluster_key
     return ClusteringResult(
         method_name=method_name,
@@ -84,4 +89,6 @@ def run_standard_clustering(
         n_neighbors=n_neighbors,
         metric=metric,
         random_state=random_state,
+        leiden_flavor=leiden_flavor,
+        leiden_n_iterations=int(leiden_n_iterations),
     )

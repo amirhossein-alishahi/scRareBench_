@@ -1,7 +1,12 @@
-# Provisional version-1 rules. Every threshold is exposed in the API and report.
+# Provisional diagnostic rules. Historical rules remain frozen for backward
+# compatibility. The additive v2 resolution_limited guard is evaluated only
+# when the historical lineage_assimilation rule also fires.
 preserved:
   min_precision: 0.70
   min_recall: 0.70
+  min_inverse_purity: 0.70
+resolution_limited:
+  min_knn_local_recovery_adjusted: 0.70
   min_inverse_purity: 0.70
 lineage_assimilation:
   max_recall: 0.50

@@ -4,32 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scrarebench"
-version = "0.10.4"
+dynamic = ["version"]
 description = "scIB-compatible and rare-cell-aware benchmarking for scRNA-seq integration latent spaces"
+keywords = ["single-cell", "scRNA-seq", "benchmarking", "integration", "rare cells", "bioinformatics"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
-authors = [
-  {name = "Amirhossein Alishahi and collaborators"}
-]
+authors = [{name = "Amirhossein Alishahi and collaborators"}]
 dependencies = [
-  "numpy>=1.26",
-  "pandas>=2.0",
-  "scipy>=1.11",
-  "scikit-learn>=1.4",
-  "matplotlib>=3.8",
-  "PyYAML>=6.0",
-  "anndata>=0.10",
-  "scanpy>=1.10",
-  "python-igraph>=0.11",
-  "leidenalg>=0.10",
-  "plotly>=5.20",
-  "scikit-misc>=0.3",
-  "scib-metrics==0.5.9",
+  "numpy>=1.26", "pandas>=2.0", "scipy>=1.11", "scikit-learn>=1.4", "matplotlib>=3.8", "PyYAML>=6.0",
+  "anndata>=0.10", "scanpy>=1.10", "python-igraph>=0.11", "leidenalg>=0.10", "plotly>=5.20", "scikit-misc>=0.3", "scib-metrics==0.5.9",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.2"]
+dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.2", "coverage>=7.0"]
 
 [project.scripts]
 scrarebench = "scrarebench.cli:main"
@@ -42,7 +39,10 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-scrarebench = ["config/*.yaml", "config/*.csv"]
+scrarebench = ["config/*.yaml", "config/*.csv", "assets/*.css", "assets/*.js", "assets/*.html"]
+
+[tool.setuptools.dynamic]
+version = {attr = "scrarebench._version.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

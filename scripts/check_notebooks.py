@@ -61,8 +61,11 @@ for path in notebooks:
         if "_EXPECTED_COLAB_ANCHORS" not in text or "Google Colab runtime 2026.07" not in text:
             raise SystemExit(f"Validated Colab runtime preflight is missing: {path}")
     else:
-        if main_ref not in text:
-            raise SystemExit(f"Developer notebook must install the integrated main branch: {path}")
+        if release_ref not in text:
+            raise SystemExit(f"Developer notebook is not pinned to v{version}: {path}")
+        stale_refs = sorted(set(semver_ref.findall(text)) - {f"v{version}"})
+        if stale_refs:
+            raise SystemExit(f"Stale release version reference(s) in {path}: {stale_refs}")
         if "scrarebench.methods" in text:
             raise SystemExit(f"Developer notebook must remain method-agnostic: {path}")
 
