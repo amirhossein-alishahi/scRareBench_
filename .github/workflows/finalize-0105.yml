@@ -22,7 +22,15 @@ jobs:
           cache: pip
 
       - name: Reconstruct exact overlay and prepare release
-        run: python .tmp/finalize_0105.py
+        run: |
+          python .tmp/finalize_0105.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('DESIGN_NOTES.md')
+          text = p.read_text(encoding='utf-8')
+          text = text.replace('# scRareBench 0.10.4 design decisions', '# scRareBench 0.10.5 design decisions', 1)
+          p.write_text(text, encoding='utf-8')
+          PY
 
       - name: Install and dependency health
         run: |
