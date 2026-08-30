@@ -1,49 +1,84 @@
 # Method developer guide
 
-scRareBench is designed so that a new integration method can be benchmarked **without modifying scRareBench**.
+scRareBench is method-agnostic: a new integration or batch-effect-removal method can be benchmarked **without adding that method to the scRareBench package**.
 
-## The required boundary
+## Two supported developer paths
 
-```text
-benchmark AnnData
-    -> your preprocessing/training
-    -> latent representation + cell identity
-    -> scRareBench evaluation
-```
+### High-level API — recommended for most method developers
 
-Your method may be a Python package, notebook implementation, local module, command-line program, or unpublished research prototype. scRareBench does not require a method adapter or registration entry.
-
-## Recommended workflow
+Use `MethodSpec` plus `benchmark_method`. You own the method runner, dependency list, and method configuration; scRareBench owns seed orchestration, latent alignment, evaluation, reports, and optional multi-seed finalization.
 
 ```python
-from scrarebench import load_dataset, benchmark_latent
-import pandas as pd
+from scrarebench import MethodOutput, MethodSpec, benchmark_method
 
-adata = load_dataset(0)
+METHOD_DEPS = ("my-method==1.2.0",)
+METHOD_CONFIG = {"latent_dim": 30, "epochs": 200}
 
-# Completely external method code.
-latent = run_my_method(adata)
+def run_my_method(method_adata, seed, config):
+    # Your preprocessing + training/integration code.
+    latent = my_method(method_adata, seed=seed, **config)
+    return MethodOutput(latent=latent, barcodes=method_adata.obs_names)
 
-# Recommended: attach cell IDs to the latent itself.
-latent = pd.DataFrame(latent, index=adata.obs_names.astype(str))
+method = MethodSpec(
+    name="MyMethod",
+    runner=run_my_method,
+    config=METHOD_CONFIG,
+    dependencies=METHOD_DEPS,
+)
 
-result = benchmark_latent(
+result = benchmark_method(
     adata,
-    latent,
-    method="MyMethod",
+    method,
+    seeds=[42, 123, 2026],        # or one integer for a single run
+    benchmark_config={"random_state": 42},  # fixed evaluation seed
+    install_dependencies=False,  # your environment remains under your control
 )
 ```
 
-## Cell identity contract
+`MethodSpec.runner` may return a NumPy array, a DataFrame, an `adata.obsm` key, or `MethodOutput`. `MethodOutput` is preferred when you want to supply explicit barcodes or provenance files.
 
-The latent must contain exactly one row per benchmark cell. Prefer a DataFrame indexed by `adata.obs_names`. If a method changes order, provide barcodes and use `allow_reorder=True`; scRareBench validates that the cell sets match before reordering.
+### Low-level API — maximum control
 
-A method should not silently remove cells, duplicate cells, or return a latent for a different dataset instance.
+Use `evaluate_latent`, `write_interactive_report`, `create_report_bundle`, `write_multiseed_interactive_report`, and `finalize_multiseed_delivery` directly. This is appropriate when your project owns custom caching/resume logic, artifact layout, or evaluation orchestration.
 
-## Custom dataset workflow
+The repository includes `scRareBench_MultiSeed_LowLevel_Template_Colab.ipynb` for this path.
+
+## Dependency ownership
+
+Method dependencies are never hardcoded into scRareBench. Choose one of three approaches:
 
 ```python
-from scrarebench import register_dataset, benchmark_latent
+# 1. Preinstall dependencies yourself (conda/uv/Docker/pip).
+
+# 2. In Colab, use the runtime helper.
+from scrarebench.runtime import setup_runtime
+setup_runtime(extra_requirements=("my-method==1.2.0",), extra_imports=("my_method",))
+
+# 3. Explicit high-level opt-in.
+result = benchmark_method(..., install_dependencies=True)
+```
+
+For custom environment policy, pass `MethodSpec(..., installer=my_installer)`. scRareBench calls that installer only when `install_dependencies=True`.
+
+## Single-seed versus multi-seed
+
+The **method seed** and **benchmark seed** are separate contracts:
+
+- method seed varies across stochastic training/integration replicates;
+- benchmark/evaluation seed stays fixed across a comparable family;
+- multi-seed aggregation summarizes metric tables only;
+- embeddings, UMAP coordinates, clusters, Sankey topology, and cell-level state remain seed-specific and are never averaged.
+
+Multi-seed finalization validates compatible method/evaluation/dataset identity before producing the combined report and delivery archive.
+
+## Cell identity contract
+
+The latent must contain exactly one row per benchmark cell. Prefer returning barcodes with the latent. If rows are reordered, `benchmark_latent(..., allow_reorder=True)` can reorder only after verifying that cell sets match. Silent cell removal, duplication, or cross-dataset latents are rejected.
+
+## Custom datasets and rare populations
+
+```python
+from scrarebench import register_dataset
 
 register_dataset(
     adata,
@@ -51,43 +86,30 @@ register_dataset(
     label_key="cell_type",
     batch_key="batch",
     count_layer="counts",
-)
-
-latent = run_my_method(adata)
-result = benchmark_latent(adata, latent, method="MyMethod")
-```
-
-Rare population metadata is optional. If absent, scRareBench runs the global/standard benchmark without inventing a rare taxonomy.
-
-## Dependencies in Colab
-
-Method dependencies belong to the method developer. The generic runtime helper can install them safely in a pre-populated environment:
-
-```python
-from scrarebench.runtime import setup_runtime
-
-setup_runtime(
-    extra_requirements=("my-method-package==1.0.0",),
-    extra_imports=("my_method_package",),
+    rare_types=["RareType"],  # optional
 )
 ```
 
-No scRareBench code change is needed for a new method name or dependency set.
+The six-state GR/LE/SR × DL/RM taxonomy is **not required** for a custom dataset. If only `rare_types` are supplied, scRareBench still computes generic rare-recovery metrics and marks scenario metadata as `UNASSIGNED`. Scenario-specific paper summaries remain separate.
 
-## Release notebooks
+## Additional rare-recovery diagnostics
 
-Official release notebooks install a fixed scRareBench Git tag (`v0.10.4` for this release), not the moving `main` branch. Method dependencies are declared explicitly inside the example notebook. The package itself remains method-agnostic.
+The hardened metric layer includes the historical metrics plus:
 
-## What belongs in a method example notebook
+- full-space selected-cell ASW (`ASW_selected_cells_in_full_latent`);
+- best-cluster precision/recall/F1 without majority-vote ownership competition;
+- kNN same-label fraction and abundance-null expectation;
+- support-adjusted kNN local recovery for very small populations;
+- separate, status-aware non-rare/rare ratio diagnostics;
+- rare-resolution sensitivity tables;
+- resolution-aware failure taxonomy while retaining legacy failure labels.
 
-A method-specific notebook may show:
+Metric direction and plain-language semantics are exposed through `METRIC_REGISTRY`, `metric_info()`, and `metric_direction()`.
 
-1. method dependency setup;
-2. loading a scRareBench dataset;
-3. method-specific preprocessing;
-4. training/inference;
-5. latent extraction;
-6. one `benchmark_latent()` call or the equivalent low-level API;
-7. optional method-specific plots.
+## Notebook map
 
-It should not move method implementation into the scRareBench package.
+- `scRareBench_CustomMethod_HighLevel_Colab.ipynb`: generic high-level template for any method.
+- `scRareBench_scVI_HighLevel_Dataset0_Colab.ipynb`: runnable high-level scVI example with scalar/list method seeds.
+- `scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb`: same high-level contract on mBDRC.
+- `scRareBench_MultiSeed_LowLevel_Template_Colab.ipynb`: explicit low-level multi-seed orchestration.
+- Existing method-specific notebooks remain examples; they are not package-supported method implementations.

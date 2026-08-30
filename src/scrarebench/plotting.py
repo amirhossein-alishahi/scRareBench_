@@ -12,16 +12,18 @@ def plot_rare_metric_heatmap(
     rare_metrics: pd.DataFrame,
     output_path: str | Path,
     *,
-    metrics: tuple[str, ...] = ("precision", "recall", "f1", "inverse_purity"),
+    metrics: tuple[str, ...] = ("knn_local_recovery_adjusted", "knn_local_recovery", "best_cluster_f1", "precision", "recall", "f1", "inverse_purity"),
 ) -> Path:
-    table = rare_metrics.set_index("cell_type").loc[:, list(metrics)]
+    available = [m for m in metrics if m in rare_metrics.columns]
+    table = rare_metrics.set_index("cell_type").loc[:, available]
     fig_width = max(8.0, 0.42 * len(table))
     fig, ax = plt.subplots(figsize=(fig_width, 4.8))
-    image = ax.imshow(table.T.to_numpy(), aspect="auto", vmin=0, vmax=1)
+    has_signed = any(m in {"knn_local_recovery_adjusted", "knn_local_recovery"} for m in available)
+    image = ax.imshow(table.T.to_numpy(), aspect="auto", vmin=-1 if has_signed else 0, vmax=1, cmap="RdYlGn" if has_signed else None)
     ax.set_xticks(np.arange(len(table.index)), labels=table.index, rotation=65, ha="right")
-    ax.set_yticks(np.arange(len(metrics)), labels=metrics)
+    ax.set_yticks(np.arange(len(available)), labels=available)
     ax.set_title("Rare-cell metrics by curated population")
-    for row in range(len(metrics)):
+    for row in range(len(available)):
         for col in range(len(table.index)):
             ax.text(col, row, f"{table.iloc[col, row]:.2f}", ha="center", va="center", fontsize=7)
     fig.colorbar(image, ax=ax, label="Score")
@@ -52,12 +54,21 @@ def plot_precision_recall(rare_metrics: pd.DataFrame, output_path: str | Path) -
     return target
 
 
-def plot_failure_counts(rare_metrics: pd.DataFrame, output_path: str | Path) -> Path:
-    counts = rare_metrics["failure_archetype"].value_counts().sort_values(ascending=True)
+def plot_failure_counts(
+    rare_metrics: pd.DataFrame,
+    output_path: str | Path,
+    *,
+    column: str = "failure_archetype",
+    title: str | None = None,
+) -> Path:
+    """Plot failure-archetype counts for either legacy or v2 taxonomy."""
+    if column not in rare_metrics.columns:
+        raise KeyError(f"Failure-archetype column is unavailable: {column}")
+    counts = rare_metrics[column].value_counts().sort_values(ascending=True)
     fig, ax = plt.subplots(figsize=(7.0, 4.5))
     ax.barh(counts.index, counts.values)
     ax.set_xlabel("Number of rare cell types")
-    ax.set_title("Provisional failure-archetype counts")
+    ax.set_title(title or "Provisional failure-archetype counts")
     for index, value in enumerate(counts.values):
         ax.text(value, index, f" {value}", va="center")
     fig.tight_layout()
@@ -121,7 +132,7 @@ def plot_scib_metric_scores(
     aggregates: pd.DataFrame,
     output_path: str | Path,
 ) -> Path:
-    """Plot all validated scIB-compatible metrics and their aggregate scores."""
+    """Plot all current scIB-compatible metrics and their aggregate scores."""
     metric_frame = metrics.copy()
     aggregate_frame = aggregates.copy()
     metric_frame = metric_frame[np.isfinite(pd.to_numeric(metric_frame["value"], errors="coerce"))]
