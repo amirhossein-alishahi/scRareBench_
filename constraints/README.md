@@ -1,7 +1,25 @@
-# Notebook reproducibility constraints
+# Reproducibility constraints
 
-`colab-2026.07-anchors.txt` records only versions that are explicitly documented/validated for the release workflow: the published Colab 2026.07 core anchors used as a **validation reference** for the official notebooks and scRareBench's pinned benchmark backend. The notebooks do not enforce this file by default.
+`colab-2026.07-anchors.txt` is an optional reference constraint file for the documented Google Colab environment used with the release notebooks.
 
-It is **not** a complete environment lock. Do not add exact Scanpy, AnnData, SciPy, pandas, Leiden, etc. versions merely to make the file look complete. Add them only after a successful end-to-end release notebook run records the actual environment.
+It is not intended to be a complete environment lock. scRareBench's runtime helper detects ABI-sensitive packages already present in the running environment and constrains them during dependency installation.
 
-`scrarebench.runtime.setup_runtime()` already snapshots and constrains ABI-sensitive packages present in the running environment. Users may additionally pass one or more files via `constraint_files=`.
+Typical Colab bootstrap:
+
+```python
+%pip install -q --no-deps "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.5"
+
+from scrarebench.runtime import setup_runtime
+
+report = setup_runtime()
+```
+
+To add your own constraint file:
+
+```python
+report = setup_runtime(
+    constraint_files=("constraints/colab-2026.07-anchors.txt",),
+)
+```
+
+Method-specific dependencies can be supplied independently through `extra_requirements=` and `extra_imports=`. The integration method remains user-owned and is not inferred from its name by scRareBench.
