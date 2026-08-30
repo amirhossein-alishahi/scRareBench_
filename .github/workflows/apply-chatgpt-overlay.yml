@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  issues: read
 
 jobs:
   apply-and-validate:
@@ -27,95 +26,44 @@ jobs:
           cache: pip
 
       - name: Reconstruct and verify exact overlay
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          EXPECTED_SHA256: bfbe74d80a1d26a6819a60dc9a5b52a84f492ac781218e5ab058faab4c172c99
         run: |
           python - <<'PY'
-          import base64, hashlib, json, os, re, shutil, urllib.request, zipfile
+          import base64, hashlib, json, shutil, tarfile
           from pathlib import Path
 
-          repo = os.environ['REPO']
-          token = os.environ['GH_TOKEN']
-          expected = os.environ['EXPECTED_SHA256']
-          headers = {
-              'Authorization': f'Bearer {token}',
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-              'User-Agent': 'scRareBench-overlay-validator',
-          }
-
-          def get_json(url):
-              req = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(req) as response:
-                  return json.load(response)
-
-          issue = get_json(f'https://api.github.com/repos/{repo}/issues/1')
-          comments = []
-          page = 1
-          while True:
-              batch = get_json(f'https://api.github.com/repos/{repo}/issues/1/comments?per_page=100&page={page}')
-              comments.extend(batch)
-              if len(batch) < 100:
-                  break
-              page += 1
-
-          def payload_after(text, marker):
-              if marker not in text:
-                  return None
-              tail = text.split(marker, 1)[1]
-              payload_lines = [
-                  line.strip()
-                  for line in tail.splitlines()
-                  if re.fullmatch(r'[A-Za-z0-9+/=]+', line.strip() or ' ')
-              ]
-              payload = ''.join(payload_lines)
-              if not payload:
-                  raise RuntimeError(f'No base64 payload found after {marker}')
-              return payload
-
-          chunks = {1: payload_after(issue.get('body') or '', 'PART=1/5')}
-          for comment in comments:
-              body = comment.get('body') or ''
-              p2 = payload_after(body, 'PART=2/5')
-              if p2 is not None:
-                  chunks[2] = p2
-                  continue
-              match = re.search(r'SEQ=(\d+)/8', body)
-              if match:
-                  idx = int(match.group(1))
-                  chunks[idx] = payload_after(body, match.group(0))
-
-          missing = [i for i in range(1, 9) if not chunks.get(i)]
+          parts = [
+              *[Path(f'.tmp/scrare_overlay_xz/part{i:02d}') for i in range(9)],
+              Path('.tmp/scrare_overlay_xz/fix09_0'),
+              Path('.tmp/scrare_overlay_xz/fix09_1'),
+              Path('.tmp/scrare_overlay_xz/tail_0'),
+              Path('.tmp/scrare_overlay_xz/tail_1'),
+              Path('.tmp/scrare_overlay_xz/tail_2'),
+          ]
+          missing = [str(p) for p in parts if not p.is_file()]
           if missing:
-              raise RuntimeError(f'Missing overlay payload chunks: {missing}')
-
-          encoded = ''.join(chunks[i] for i in range(1, 9))
+              raise RuntimeError(f'Missing staged overlay chunks: {missing}')
+          encoded = ''.join(p.read_text(encoding='utf-8').strip() for p in parts)
           raw = base64.b64decode(encoded, validate=True)
+          expected = 'ed1e43612ed5df157b30d57972f64eb711421f19618a82127bd76a7a8832ca80'
           observed = hashlib.sha256(raw).hexdigest()
-          print('overlay zip bytes:', len(raw))
+          print('overlay tar.xz bytes:', len(raw))
           print('overlay sha256:', observed)
           if observed != expected:
-              raise RuntimeError(f'ZIP SHA256 mismatch: {observed} != {expected}')
+              raise RuntimeError(f'tar.xz SHA256 mismatch: {observed} != {expected}')
 
-          zip_path = Path('/tmp/scrarebench-overlay.zip')
-          zip_path.write_bytes(raw)
-          with zipfile.ZipFile(zip_path) as zf:
-              bad = zf.testzip()
-              if bad is not None:
-                  raise RuntimeError(f'Corrupt ZIP member: {bad}')
-              extract = Path('/tmp/scrarebench-overlay')
-              if extract.exists():
-                  shutil.rmtree(extract)
-              zf.extractall(extract)
+          archive = Path('/tmp/scrarebench-overlay.tar.xz')
+          archive.write_bytes(raw)
+          extract = Path('/tmp/scrarebench-overlay')
+          shutil.rmtree(extract, ignore_errors=True)
+          extract.mkdir(parents=True)
+          with tarfile.open(archive, 'r:xz') as tf:
+              tf.extractall(extract)
 
           roots = [p for p in extract.iterdir() if p.is_dir()]
           if len(roots) != 1:
               raise RuntimeError(f'Expected one overlay root, got {roots}')
           root = roots[0]
-          manifest_path = root / 'OVERLAY_MANIFEST.json'
-          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          manifest = json.loads((root / 'OVERLAY_MANIFEST.json').read_text(encoding='utf-8'))
           entries = manifest['files']
           for entry in entries:
               rel = entry['path']
@@ -129,8 +77,8 @@ jobs:
           print('manifest verified files:', len(entries))
 
           skip = {'APPLY_NOTES.md', 'OVERLAY_MANIFEST.json'}
-          copied = []
           checkout = Path.cwd()
+          copied = []
           for entry in entries:
               rel = entry['path']
               if rel in skip:
@@ -141,7 +89,6 @@ jobs:
               shutil.copy2(src, dst)
               copied.append(rel)
           print('overlay files copied:', len(copied))
-          print('\n'.join(copied))
           PY
 
       - name: Install package and dev dependencies
@@ -197,7 +144,7 @@ jobs:
           wheel = sorted(Path('dist').glob('scrarebench-*.whl'))[-1]
           with zipfile.ZipFile(wheel) as zf:
               names = set(zf.namelist())
-          required_suffixes = [
+          required = [
               'scrarebench/assets/dashboard.css',
               'scrarebench/assets/dashboard.js',
               'scrarebench/assets/dashboard_template.html',
@@ -205,7 +152,7 @@ jobs:
               'scrarebench/multiseed.py',
               'scrarebench/delivery.py',
           ]
-          missing = [item for item in required_suffixes if item not in names]
+          missing = [item for item in required if item not in names]
           if missing:
               raise SystemExit(f'Missing wheel assets/modules: {missing}')
           print('wheel packaging validation passed:', wheel)
@@ -225,7 +172,7 @@ jobs:
               if 'git+https://github.com/amirhossein-alishahi/scRareBench_.git@main' not in code:
                   raise SystemExit(f'{path} does not install the validated main branch')
           generic = Path('notebooks/scRareBench_CustomMethod_HighLevel_Colab.ipynb')
-          code = '\n'.join(''.join(c.get('source', [])) for c in json.loads(generic.read_text())['cells'] if c.get('cell_type') == 'code')
+          code = '\n'.join(''.join(c.get('source', [])) for c in json.loads(generic.read_text(encoding='utf-8'))['cells'] if c.get('cell_type') == 'code')
           for token in ['MethodSpec', 'benchmark_method', 'dependencies', 'runner']:
               if token not in code:
                   raise SystemExit(f'Generic notebook missing {token}')
@@ -234,15 +181,17 @@ jobs:
           print('method-agnostic Colab contract passed')
           PY
 
-      - name: Commit validated overlay to branch
+      - name: Commit validated final tree to branch
         run: |
+          rm -rf .tmp
+          rm -f .github/workflows/apply-chatgpt-overlay.yml
           git status --short
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add HIGH_LEVEL_API.md METHOD_INTEGRATION_GUIDE.md pyproject.toml src tests notebooks
+          git add -A
           if git diff --cached --quiet; then
             echo 'No overlay changes to commit.'
             exit 0
           fi
-          git commit -m 'Integrate high-level method API, multi-seed benchmarking, and rare-aware metrics'
+          git commit -m 'Integrate high-level API, multi-seed benchmarking, and rare-aware metrics'
           git push origin HEAD:chatgpt/highlevel-multiseed
