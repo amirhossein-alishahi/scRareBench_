@@ -277,6 +277,13 @@ def benchmark_latent(
     else:
         counts = count_layer
     if counts is not None and counts not in adata.layers:
+        if cfg.run_scib:
+            source = "dataset metadata" if count_layer is _UNSET else "benchmark_latent(count_layer=...)"
+            raise KeyError(
+                f"count_layer={counts!r} from {source} is required for scIB evaluation but is not present "
+                "in adata.layers. Provide a validated raw-count layer, pass count_layer=None to use adata.X "
+                "explicitly, or disable scIB with config={'run_scib': False}."
+            )
         counts = None
 
     name = str(method).strip()

@@ -8,7 +8,7 @@ The interactive layer does **not** replace the machine-readable result. `results
 
 A single-run report opens on the **Overview** page and exposes the main benchmark sections as tabs.
 
-> **Screenshot placeholder — add:** `docs/images/report_overview.webp`
+![scRareBench interactive report overview](docs/images/report_overview.webp)
 
 ### Overview
 
@@ -35,7 +35,7 @@ The scIB tab contains individual scIB-compatible metrics and aggregate scores to
 
 The Rare-cell Explorer is the main diagnostic view for low-frequency populations.
 
-> **Screenshot placeholder — add:** `docs/images/report_rare_explorer.webp`
+![scRareBench Rare-cell Explorer](docs/images/report_rare_explorer.webp)
 
 It combines:
 
@@ -75,7 +75,7 @@ The Reproducibility tab shows benchmark configuration and environment/provenance
 
 A multi-seed report stores several stochastic method runs in one portable HTML workspace.
 
-> **Screenshot placeholder — add:** `docs/images/report_seed_stability.webp`
+![scRareBench multi-seed Seed Stability view](docs/images/report_seed_stability.webp)
 
 The top **Multi-seed workspace** card displays:
 
@@ -135,7 +135,7 @@ comparator/scRareBench_Multi_Report_Comparator_v10.html
 
 No Python installation or web server is required. The comparator is a client-side HTML application; it loads pinned Plotly/JSZip browser libraries from public CDNs while keeping imported report data local to the browser.
 
-> **Screenshot placeholder — add:** `docs/images/comparator_methods_v10.webp`
+![scRareBench Multi-Report Comparator v10](docs/images/comparator_methods_v10.webp)
 
 ## Importing reports
 
@@ -245,21 +245,13 @@ For a deterministic method, a single run is sufficient unless you are explicitly
 
 ---
 
-# 5. Adding the documentation screenshots later
+# 5. Documentation screenshots
 
-The public README/guide reserve four screenshot locations. Add these files when convenient:
+The repository includes four WebP previews used by the README and this guide:
 
-```text
-docs/images/report_overview.webp
-docs/images/report_rare_explorer.webp
-docs/images/report_seed_stability.webp
-docs/images/comparator_methods_v10.webp
-```
+- `docs/images/report_overview.webp`
+- `docs/images/report_rare_explorer.webp`
+- `docs/images/report_seed_stability.webp`
+- `docs/images/comparator_methods_v10.webp`
 
-After adding the files, replace each visible `Screenshot placeholder` line with the corresponding Markdown image reference, for example:
-
-```markdown
-![scRareBench interactive overview](docs/images/report_overview.webp)
-```
-
-The package and comparator do not depend on these documentation images; they are only repository previews for GitHub visitors.
+These images are documentation-only. The benchmark logic, notebooks, generated reports, and Comparator do not depend on them at runtime.
