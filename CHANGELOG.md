@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.6 — interactive reporting and comparator release
+
+- Promoted self-contained interactive HTML reports as a first-class public workflow and added `INTERACTIVE_REPORTS.md`.
+- Added standalone Comparator v10 for side-by-side method/dataset comparison, aggregate/individual/specific-seed views, and schema-1.6 identity/provenance-aware grouping.
+- Comparator v10 prefers stored dataset identity, suppresses exact duplicate runs, and rejects conflicting same-seed runs instead of silently replacing or double-counting them.
+- Documented native multi-seed management, aggregate mean ± sample SD, seed-specific geometry, reversible exclude/restore controls, and Save Updated Report behavior.
+- Added repository screenshot placeholders only; documentation images can be added later without affecting package/runtime behavior.
+- No benchmark metric formula, failure threshold, integration algorithm, or scientific evaluation logic changed in this release.
+
 ## 0.10.5 — high-level multi-seed developer release
 
 - Added generic `MethodSpec`, `MethodOutput`, and `benchmark_method()` orchestration.

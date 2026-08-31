@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>scRareBench Multi-Report Comparator</title>
+<style>
+:root{
+--bg:#f4f7fb;--panel:#fff;--ink:#172033;--muted:#64748b;--line:#dce3ee;
+--accent:#3157d5;--accent2:#6d4aff;--good:#079669;--warn:#d97706;--bad:#dc2626;
+--soft:#f7f9fe;--shadow:0 10px 28px rgba(31,55,93,.07);--focus:0 0 0 3px rgba(49,87,213,.18)
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select{font:inherit}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:var(--focus)}
+header{background:linear-gradient(120deg,#13264f,#314db6 58%,#6846c7);color:#fff;padding:26px 28px 22px}
+.head{max-width:1700px;margin:auto}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;opacity:.75}
+.head h1{margin:5px 0 7px;font-size:1.9rem}.head p{margin:0;opacity:.88;max-width:1120px;line-height:1.5}
+.shell{max-width:1700px;margin:auto;padding:18px}
+.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.btn{border:0;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer;background:var(--accent);color:white}
+.btn:hover{filter:brightness(.97)}.btn.secondary{background:#e9eef8;color:#31405e}.btn.ghost{background:white;color:#42526a;border:1px solid var(--line)}
+.btn.bad{background:#fff1f2;color:#a72d42;border:1px solid #f4c7cf}.btn.small{padding:6px 9px;font-size:.78rem}
+.png-export-btn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;color:#31405e;border:1px solid var(--line);box-shadow:0 1px 2px rgba(31,55,93,.04)}
+.png-export-btn:hover{background:#f4f7ff;border-color:#aebde0;filter:none}.png-export-btn:disabled{opacity:.5;cursor:not-allowed}
+.png-export-btn .png-icon{font-size:.92rem;line-height:1}.plot-title-group{display:flex;align-items:center;gap:10px;min-width:0}.plot-title-group small{white-space:normal}
+.status{color:var(--muted);font-size:.84rem}.spacer{flex:1}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:15px;padding:7px;position:sticky;top:8px;z-index:40;box-shadow:var(--shadow)}
+.tab-btn{border:0;background:transparent;color:#42526a;padding:10px 13px;border-radius:10px;font-weight:700;cursor:pointer}
+.tab-btn:hover{background:#f1f4fb}.tab-btn.active{background:#e9eeff;color:#263fa7}
+.tab{display:none;padding-top:16px}.tab.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:11px;margin-bottom:14px}
+.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow)}
+.card{padding:14px 15px}.card .k{font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.card .v{font-size:1.33rem;font-weight:780;margin-top:4px;overflow-wrap:anywhere}.card .s{font-size:.78rem;color:var(--muted);margin-top:3px;line-height:1.4}
+.panel{margin-bottom:14px;overflow:hidden}.panel-title{padding:13px 16px;border-bottom:1px solid var(--line);font-weight:760;display:flex;gap:10px;justify-content:space-between;align-items:center}
+.panel-title small{font-weight:400;color:var(--muted)}.panel-body{padding:15px}
+.grid2{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:14px;align-items:start}
+.grid-half{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.controls{display:flex;flex-direction:column;gap:11px}.control-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px}
+label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px}
+select,input[type=text],input[type=search],input[type=number]{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+input.inline-edit{padding:5px 7px;min-width:115px}
+.plot{min-height:520px;width:100%}.plot.small{min-height:390px}
+.note,.callout{font-size:.82rem;line-height:1.5;color:var(--muted)}.callout{background:var(--soft);border:1px dashed #c8d3e8;padding:10px;border-radius:10px}
+.warn{background:#fff9ee;border-color:#efd29b;color:#72501d}.good{background:#effaf6;border-color:#bfe7d8;color:#17624d}
+.table-wrap{overflow:auto;max-height:650px;border:1px solid var(--line);border-radius:10px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.79rem}th,td{padding:8px 9px;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:#f7f9fc;z-index:2;color:#45536b}tr:hover td{background:#f8faff}
+.missing{color:#a1a9b6;background:#fbfcfd}.score-good{font-weight:750;color:#087b5a}.score-bad{color:#ae3247}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#3949a5;font-size:.72rem;margin:1px}
+.badge.warn{background:#fff1e8;color:#a14c18;border:0}.badge.good{background:#eaf8f2;color:#087b5a;border:0}
+.import-drop{border:2px dashed #bdc9df;border-radius:14px;padding:25px;text-align:center;background:#fbfcff;cursor:pointer;transition:.15s}
+.import-drop:hover,.import-drop.drag{border-color:#7189df;background:#f5f7ff}
+.import-drop b{display:block;margin-bottom:5px}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px}.insight{border:1px solid #e4e9f2;border-radius:10px;padding:10px;background:#fff}
+.insight b{display:block;margin-bottom:4px}.insight span{font-size:.8rem;color:var(--muted);line-height:1.4}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed #cbd5e1;border-radius:11px;background:#fbfcfe}
+.section-note{margin:0 0 12px;color:var(--muted);font-size:.84rem;line-height:1.5}
+.checkbox-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.checkbox-row label{display:flex;gap:5px;align-items:center;margin:0}
+.file-error{color:#a72d42;font-size:.76rem;white-space:normal;max-width:420px}
+@media(max-width:900px){.grid2,.grid-half{grid-template-columns:1fr}.plot{min-height:430px}.shell{padding:10px}header{padding:22px 16px}}
+</style>
+</head>
+<body>
+<header><div class="head">
+<div class="eyebrow">scRareBench analysis utility</div>
+<h1>Multi-Report Comparator v10</h1>
+<p>Import current scRareBench v0.10.6/schema-1.6 interactive reports, multi-seed reports, result ZIPs, results.json files, and compatible legacy HTML reports. Compare methods within a dataset or datasets within a method, inspect seed-aware aggregates and individual runs, build direction-aware metric plots, explore rare-cell recovery, and audit coverage without treating missing runs as zero. Files are processed locally in the browser; Plotly and JSZip are loaded from pinned public CDNs.</p>
+</div></header>
+<div class="shell">
+<div class="topbar">
+<button class="btn" id="importBtn">Import reports</button>
+<input accept=".html,.htm,.json,.zip,text/html,application/json,application/zip" hidden="" id="fileInput" multiple="" type="file"/>
+<button class="btn secondary" id="clearBtn">Clear all</button>
+<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)">Seed view
+<select id="seedMode"><option value="aggregate">Aggregate included seeds</option><option value="individual">Show individual seeds</option><option value="specific">Specific seed</option></select>
+</label>
+<select aria-label="Specific method seed" id="specificSeed" style="display:none;min-width:105px"></select>
+<span class="status" id="globalStatus">No reports imported.</span>
+<span class="spacer"></span>
+<span class="badge" id="reportBadge">0 reports</span>
+</div>
+<nav class="tabs">
+<button class="tab-btn active" data-tab="import">Import &amp; Data</button>
+<button class="tab-btn" data-tab="methods">Methods on Dataset</button>
+<button class="tab-btn" data-tab="datasets">Datasets for Method</button>
+<button class="tab-btn" data-tab="plotter">Metric Plotter</button>
+<button class="tab-btn" data-tab="rare">Rare-cell Deep Dive</button>
+<button class="tab-btn" data-tab="coverage">Coverage &amp; Ranking</button>
+</nav>
+<section class="tab active" id="tab-import">
+<div class="panel">
+<div class="panel-title"><span>Import scRareBench results</span><small>v0.10.6 multi-seed HTML / single-run HTML / ZIP / results.json · compatible legacy HTML · processed locally</small></div>
+<div class="panel-body">
+<div class="import-drop" id="dropZone">
+<b>Drop scRareBench interactive .html, result .zip, or results.json files here</b>
+<span class="note">or click this area / the Import reports button. Nothing is uploaded to a server.</span>
+</div>
+<div id="importMessages" style="margin-top:10px"></div>
+</div>
+</div>
+<div class="cards" id="importCards"></div>
+<div class="panel">
+<div class="panel-title"><span>Imported report registry</span><small>Edit method or dataset labels if automatic detection is ambiguous</small></div>
+<div class="panel-body" id="registry"></div>
+</div>
+</section>
+<section class="tab" id="tab-methods">
+<p class="section-note">Compare all imported methods that are available for one dataset. Missing method–dataset combinations remain missing and are never imputed as zero.</p>
+<div class="panel"><div class="panel-title"><span>Controls</span></div><div class="panel-body">
+<div class="control-row">
+<div><label>Dataset</label><select id="mDataset"></select></div>
+<div><label>Metric family</label><select id="mFamily"></select></div>
+<div><label>Bar-chart metric</label><select id="mMetric"></select></div>
+</div>
+</div></div>
+<div class="cards" id="methodCards"></div>
+<div class="grid-half">
+<div class="panel"><div class="panel-title"><span>Metric heatmap</span><button class="btn small png-export-btn" data-plot="methodHeatmap" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="methodHeatmap"></div></div></div>
+<div class="panel"><div class="panel-title"><span>Selected metric</span><button class="btn small png-export-btn" data-plot="methodBar" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="methodBar"></div></div></div>
+</div>
+<div class="panel"><div class="panel-title"><span>Comparison table</span></div><div class="panel-body" id="methodTable"></div></div>
+</section>
+<section class="tab" id="tab-datasets">
+<p class="section-note">Compare one integration method across every dataset for which that method has a report. Datasets that exist for other methods but not the selected method are shown as coverage gaps.</p>
+<div class="panel"><div class="panel-title"><span>Controls</span></div><div class="panel-body">
+<div class="control-row">
+<div><label>Method</label><select id="dMethod"></select></div>
+<div><label>Metric family</label><select id="dFamily"></select></div>
+<div><label>Bar-chart metric</label><select id="dMetric"></select></div>
+</div>
+</div></div>
+<div class="cards" id="datasetCards"></div>
+<div class="grid-half">
+<div class="panel"><div class="panel-title"><span>Metric heatmap</span><button class="btn small png-export-btn" data-plot="datasetHeatmap" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="datasetHeatmap"></div></div></div>
+<div class="panel"><div class="panel-title"><span>Selected metric</span><button class="btn small png-export-btn" data-plot="datasetBar" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="datasetBar"></div></div></div>
+</div>
+<div class="panel"><div class="panel-title"><span>Comparison table</span></div><div class="panel-body" id="datasetTable"></div></div>
+</section>
+<section class="tab" id="tab-plotter">
+<p class="section-note">Build a method scatter plot for one dataset. Metric direction is read from the report metric registry when available and can be overridden manually. Methods missing either selected axis are explicitly skipped.</p>
+<div class="grid2">
+<div class="panel"><div class="panel-title"><span>Plot builder</span></div><div class="panel-body controls">
+<div><label>Dataset</label><select id="pDataset"></select></div>
+<div><label>X metric</label><select id="pX"></select></div>
+<div><label>Y metric</label><select id="pY"></select></div>
+<div><label>X direction</label><select id="pXDir"><option value="auto">Auto (registry)</option><option value="maximize">Maximize ↑</option><option value="minimize">Minimize ↓</option></select></div>
+<div><label>Y direction</label><select id="pYDir"><option value="auto">Auto (registry)</option><option value="maximize">Maximize ↑</option><option value="minimize">Minimize ↓</option></select></div>
+<div><label>Bubble size (optional)</label><select id="pSize"></select></div>
+<div class="checkbox-row">
+<label><input checked="" id="pPareto" type="checkbox"/> show Pareto frontier</label>
+<label><input checked="" id="pLabels" type="checkbox"/> show method labels</label>
+</div>
+<div class="callout">Pareto and “Best X/Y” calculations are direction-aware. Current results provide metric semantics through the embedded registry; compatible legacy reports use the comparator fallback registry. Override direction only when you intentionally reinterpret a metric. The dotted Pareto connector is not a regression/trend line.</div>
+</div></div>
+<div class="panel"><div class="panel-title"><span>Custom metric plot</span><button class="btn small png-export-btn" data-plot="metricScatter" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body">
+<div class="plot" id="metricScatter"></div>
+<div class="insights" id="plotInsights"></div>
+</div></div>
+</div>
+<div class="grid-half">
+<div class="panel"><div class="panel-title"><div class="plot-title-group"><span>scIB trade-off</span><small>Bio conservation vs Batch correction</small></div><button class="btn small png-export-btn" data-plot="scibScatter" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot small" id="scibScatter"></div></div></div>
+<div class="panel"><div class="panel-title"><div class="plot-title-group"><span>Rare-recovery trade-off</span><small>Rare local recovery (preferred) or legacy F1 vs scIB Total</small></div><button class="btn small png-export-btn" data-plot="rareTradeoff" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot small" id="rareTradeoff"></div></div></div>
+</div>
+</section>
+<section class="tab" id="tab-rare">
+<p class="section-note">Cell-type-level comparison for rare populations. Leiden-resolution-independent, graph-dependent local-recovery and best-cluster diagnostics are available alongside the historical majority-vote metrics; missing values remain blank.</p>
+<div class="panel"><div class="panel-title"><span>Rare-cell controls</span></div><div class="panel-body">
+<div class="control-row">
+<div><label>Dataset</label><select id="rDataset"></select></div>
+<div><label>Rare-cell metric</label><select id="rMetric"></select></div>
+<div><label>Scenario filter</label><select id="rScenario"><option value="">All scenarios</option></select></div>
+</div>
+</div></div>
+<div class="cards" id="rareCards"></div>
+<div class="panel"><div class="panel-title"><span>Rare population × method heatmap</span><button class="btn small png-export-btn" data-plot="rareHeatmap" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="rareHeatmap"></div></div></div>
+<div class="panel"><div class="panel-title"><span>Rare-cell values</span></div><div class="panel-body" id="rareTable"></div></div>
+</section>
+<section class="tab" id="tab-coverage">
+<p class="section-note">Coverage is separated from performance. A method with fewer tested datasets is not penalized as if untested datasets had score 0.</p>
+<div class="cards" id="coverageCards"></div>
+<div class="grid-half">
+<div class="panel"><div class="panel-title"><span>Method × dataset coverage</span><button class="btn small png-export-btn" data-plot="coverageHeatmap" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot small" id="coverageHeatmap"></div></div></div>
+<div class="panel"><div class="panel-title"><span>Cross-dataset ranking</span><button class="btn small png-export-btn" data-plot="rankPlot" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body">
+<div class="control-row"><div><label>Ranking metric</label><select id="rankMetric"></select></div><div><label>Dataset policy</label><select id="rankPolicy"><option value="all">All available datasets</option><option value="common">Strict common datasets only</option></select></div></div>
+<div class="plot small" id="rankPlot"></div>
+</div></div>
+</div>
+<div class="panel"><div class="panel-title"><span>Ranking details</span><small>Mean rank is calculated only on datasets where the method has the selected metric</small></div><div class="panel-body" id="rankTable"></div></div>
+</section>
+</div>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" crossorigin="anonymous"></script>
+<script>
+const state = {
+reports: [],              // current comparison view
+groups: [],               // one imported file = one method×dataset group with one or many seeds
+fingerprintLabels: new Map(),
+nextDatasetLetter: 0,
+seedMode: "aggregate",
+specificSeed: null,
+};
+const FAMILY_LABELS = {
+"Core · overall":"Core metrics — overall",
+"Core · rare":"Core metrics — rare subset",
+"Core · non_rare":"Core metrics — non-rare subset",
+"Rare summary":"Rare-cell recovery summary",
+"scIB":"scIB individual metrics",
+"scIB aggregate":"scIB aggregate metrics"
+};
+const CORE_EXCLUDE = new Set(["subset","n_cells","n_cell_types"]);
+const RARE_CELL_METRICS = ["knn_local_recovery_adjusted","best_cluster_f1","inverse_purity","knn_local_recovery","knn_same_label_fraction","knn_max_achievable_fraction","best_cluster_precision","best_cluster_recall","precision","recall","f1","within_type_batch_nmi","dominant_wrong_fraction"];
+const COLORS = ["#3157d5","#6d4aff","#079669","#d97706","#dc2626","#0e7490","#7c3aed","#be185d","#4d7c0f","#b45309","#475569","#0369a1"];
+const BUILTIN_METRIC_DIRECTIONS = {
+"within_type_batch_nmi":"minimize",
+"dominant_wrong_fraction":"minimize",
+"ASW_true_on_latent":"maximize","ARI_true_vs_cluster":"maximize","AMI_true_vs_cluster":"maximize",
+"Accuracy":"maximize","F1_macro":"maximize","F1_weighted":"maximize","G_Mean":"maximize",
+"precision":"maximize","recall":"maximize","f1":"maximize","inverse_purity":"maximize",
+"best_cluster_precision":"maximize","best_cluster_recall":"maximize","best_cluster_f1":"maximize",
+"knn_same_label_fraction":"maximize","knn_local_recovery_adjusted":"maximize","knn_local_recovery":"context","knn_expected_fraction":"context","knn_max_achievable_fraction":"context","knn_mean_neighbors":"context","knn_valid_cells":"context","failure_match_count":"context","failure_match_count_v2":"context","support":"context","preserved_fraction":"context","resolution_limited_fraction":"context",
+"ASW_selected_cells_in_full_latent":"maximize",
+"Isolated labels":"maximize","Leiden NMI":"maximize","Leiden ARI":"maximize","KMeans NMI":"maximize","KMeans ARI":"maximize",
+"Silhouette label":"maximize","cLISI":"maximize","BRAS":"maximize","Silhouette batch":"maximize","iLISI":"maximize","KBET":"maximize",
+"Graph connectivity":"maximize","PCR comparison":"maximize","Bio conservation":"maximize","Batch correction":"maximize","Total":"maximize"
+};
+function esc(s){
+return String(s ?? "").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function fmt(v){
+if(v===null || v===undefined || Number.isNaN(v)) return "—";
+if(typeof v!=="number") return esc(v);
+const a=Math.abs(v);
+if(a!==0 && (a<0.0001 || a>=10000)) return v.toExponential(3);
+return v.toFixed(a<1?4:3).replace(/0+$/,"").replace(/\.$/,"");
+}
+function unique(xs){return [...new Set(xs)]}
+function median(xs){
+const a=xs.filter(Number.isFinite).sort((x,y)=>x-y); if(!a.length)return null;
+const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2;
+}
+function mean(xs){const a=xs.filter(Number.isFinite);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function isNum(v){return typeof v==="number" && Number.isFinite(v)}
+function slug(s){return String(s??"").trim()}
+function extractPayload(text){
+// v0.10+ reports use a dedicated JSON script node so the report can be edited
+// in-browser and saved again without parsing JavaScript source.
+try{
+const doc=new DOMParser().parseFromString(text,"text/html");
+const node=doc.getElementById("scrarebench-report-data");
+if(node) return JSON.parse(node.textContent||"{}");
+}catch(_){/* fall through to legacy parser */}
+// Legacy v0.9.x dashboard payload.
+const marker='const P=';
+const start=text.indexOf(marker);
+if(start<0) throw new Error("Could not find an embedded scRareBench payload.");
+let i=start+marker.length;
+while(/\s/.test(text[i])) i++;
+if(text[i]!=="{") throw new Error("Malformed legacy scRareBench payload start.");
+const objectStart=i;
+let depth=0, inString=false, escaped=false;
+for(;i<text.length;i++){
+const ch=text[i];
+if(inString){
+if(escaped){escaped=false;continue}
+if(ch==="\\"){escaped=true;continue}
+if(ch==='"'){inString=false}
+continue;
+}
+if(ch==='"'){inString=true;continue}
+if(ch==="{") depth++;
+else if(ch==="}"){
+depth--;
+if(depth===0) return JSON.parse(text.slice(objectStart,i+1));
+}
+}
+throw new Error("Payload object did not terminate.");
+}
+function parseYamlScalar(text,key){
+if(!text) return null;
+const re=new RegExp("^\\s*"+key.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*:\\s*(.+?)\\s*$","mi");
+const m=String(text).match(re);
+return m?m[1].replace(/^['"]|['"]$/g,"").trim():null;
+}
+function methodFromPayload(P, filename){
+const rc=P.reproducibility?.run_config || "";
+const m=parseYamlScalar(rc,"method_name");
+if(m) return m;
+const rk=P.meta?.representation_key;
+if(rk) return String(rk).replace(/^X_/,"");
+return filename.replace(/\.html?$/i,"").replace(/[_-]\d+$/,"");
+}
+function datasetNumberFromFilename(filename){
+const base=filename.replace(/\.(?:html?|json|zip)$/i,"");
+let m=base.match(/dataset[_-]?(\d+)/i);
+if(m) return m[1];
+m=base.match(/[_-](\d+)$/);
+return m?m[1]:null;
+}
+function geneCountFromPayload(P){
+const t=P.reproducibility?.scib_reference_config || "";
+const v=parseYamlScalar(t,"gex_features_before_hvg");
+return v?Number(v):null;
+}
+function fingerprint(P){
+const m=P.meta||{};
+if(m.dataset_fingerprint) return String(m.dataset_fingerprint);
+if(m.cell_order_sha256) return `cells:${m.cell_order_sha256}`;
+return [
+m.n_cells??"?",m.n_batches??"?",m.n_cell_types??"?",m.n_rare_types??"?",m.n_rare_cells??"?",geneCountFromPayload(P)??"?"
+].join("|");
+}
+function datasetLabelFor(P, filename){
+const fp=fingerprint(P);
+const num=datasetNumberFromFilename(filename);
+const proposed=num!==null?`Dataset ${num}`:null;
+if(state.fingerprintLabels.has(fp)) return state.fingerprintLabels.get(fp);
+let label=proposed;
+if(!label){
+const letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const n=state.nextDatasetLetter++;
+label=`Dataset ${n<letters.length?letters[n]:n+1}`;
+}
+state.fingerprintLabels.set(fp,label);
+return label;
+}
+function metricNameFromKey(key){return String(key||"").split("::").pop()}
+function normalizedDirection(value){return value==="minimize"?"minimize":(value==="context"?"context":"maximize")}
+function inferDirection(metricName, registry=null){
+const entry=registry?.[metricName];
+if(entry && ["maximize","minimize","context"].includes(entry.direction)) return entry.direction;
+return BUILTIN_METRIC_DIRECTIONS[metricName] || "maximize";
+}
+function addMetric(map, key, label, family, value, direction="maximize"){
+if(isNum(value)) map[key]={key,label,family,value,direction:normalizedDirection(direction)};
+}
+function normalizePayload(P, file){
+const meta=P.meta||{};
+const metrics={};
+for(const row of (P.metrics?.subset?.rows||[])){
+const subset=row.subset;
+if(!["overall","rare","non_rare"].includes(subset)) continue;
+const fam=`Core · ${subset}`;
+for(const [k,v] of Object.entries(row)){
+if(CORE_EXCLUDE.has(k) || !isNum(v)) continue;
+addMetric(metrics,`${fam}::${k}`,k.replaceAll("_"," "),fam,v,inferDirection(k));
+}
+}
+for(const row of (P.rare?.summary?.rows||[])){
+if(!row.metric || !isNum(row.mean)) continue;
+const label=`${row.metric.replaceAll("_"," ")} mean`;
+addMetric(metrics,`Rare summary::${row.metric}`,label,"Rare summary",row.mean,inferDirection(row.metric));
+}
+for(const row of (P.scib?.metrics?.rows||[])){
+if(row.status && row.status!=="computed") continue;
+if(!row.metric || !isNum(row.value)) continue;
+addMetric(metrics,`scIB::${row.metric}`,row.metric,"scIB",row.value,inferDirection(row.metric));
+}
+for(const row of (P.scib?.aggregates?.rows||[])){
+if(row.status && row.status!=="computed") continue;
+if(!row.metric || !isNum(row.value)) continue;
+addMetric(metrics,`scIB aggregate::${row.metric}`,row.metric,"scIB aggregate",row.value,inferDirection(row.metric));
+}
+const rareRows=(P.rare?.per_type?.rows||[]).map(r=>({
+cell_type:r.cell_type,
+scenario:r.scenario||"",
+distribution:r.distribution||"",
+topology:r.topology||"",
+support:r.support,
+failure_archetype:r.failure_archetype_v2||r.failure_archetype||"",failure_archetype_v2:r.failure_archetype_v2||"",failure_archetype_legacy:r.failure_archetype||"",
+...Object.fromEntries(RARE_CELL_METRICS.map(k=>[k,isNum(r[k])?r[k]:null]))
+}));
+const method=methodFromPayload(P,file.name);
+const fp=fingerprint(P);
+const dataset=datasetLabelFor(P,file.name);
+return {
+id: crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`,
+filename:file.name,
+method,
+dataset,
+fingerprint:fp,
+metrics,
+rareRows,
+metricRegistry:P.metric_registry||{},
+methodSeed:meta.method_seed??null,
+method_seed:meta.method_seed??null,
+included:true,
+meta:{
+n_cells:meta.n_cells,n_dimensions:meta.n_dimensions,n_batches:meta.n_batches,
+n_cell_types:meta.n_cell_types,n_rare_types:meta.n_rare_types,n_rare_cells:meta.n_rare_cells,
+representation_key:meta.representation_key,scib_backend:meta.scib_backend,scib_backend_version:meta.scib_backend_version
+}
+};
+}
+function stats(values){
+const a=values.filter(isNum);if(!a.length)return {mean:null,sd:null,n:0,min:null,max:null,values:[]};
+const mean=a.reduce((x,y)=>x+y,0)/a.length;
+const sd=a.length>=2?Math.sqrt(a.reduce((x,y)=>x+(y-mean)*(y-mean),0)/(a.length-1)):null;
+return {mean,sd,n:a.length,min:Math.min(...a),max:Math.max(...a),values:[...a]};
+}
+function consensus(values){
+const a=values.filter(x=>x!==null&&x!==undefined&&String(x)!=="");if(!a.length)return {label:"",agreement:null,counts:{}};
+const counts={};a.forEach(x=>counts[String(x)]=(counts[String(x)]||0)+1);
+const pair=Object.entries(counts).sort((x,y)=>y[1]-x[1]||x[0].localeCompare(y[0]))[0];
+return {label:pair[0],agreement:pair[1]/a.length,counts};
+}
+function aggregateNormalizedRuns(seedRuns,file,expectedSeeds=[]){
+if(!seedRuns.length) throw new Error("Multi-seed report contains no runs.");
+const included=seedRuns.filter(r=>r.included!==false);
+const base=seedRuns[0];
+const metrics={};
+const keys=unique(seedRuns.flatMap(r=>Object.keys(r.metrics||{})));
+for(const key of keys){
+const source=seedRuns.find(r=>r.metrics?.[key])?.metrics?.[key];if(!source)continue;
+const st=stats(included.map(r=>r.metrics?.[key]?.value));
+if(st.n) metrics[key]={...source,value:st.mean,sd:st.sd,n:st.n,min:st.min,max:st.max,values:st.values};
+}
+const byRare=new Map();
+for(const r of included){
+for(const row of r.rareRows||[]){
+const k=[row.cell_type,row.scenario,row.distribution,row.topology].join("\u0001");
+if(!byRare.has(k))byRare.set(k,[]);byRare.get(k).push(row);
+}
+}
+const rareRows=[...byRare.values()].map(rows=>{
+const first=rows[0],out={cell_type:first.cell_type,scenario:first.scenario||"",distribution:first.distribution||"",topology:first.topology||""};
+const support=stats(rows.map(x=>x.support));out.support=support.mean;out.support_sd=support.sd;out.support_n=support.n;
+for(const k of RARE_CELL_METRICS){const st=stats(rows.map(x=>x[k]));out[k]=st.mean;out[`${k}_sd`]=st.sd;out[`${k}_n`]=st.n;out[`${k}_values`]=st.values}
+const c=consensus(rows.map(x=>x.failure_archetype_v2||x.failure_archetype));out.failure_archetype=c.label;out.failure_archetype_v2=c.label;out.failure_agreement=c.agreement;out.failure_counts=c.counts;
+return out;
+});
+const exp=unique((expectedSeeds||[]).filter(x=>x!==null&&x!==undefined)).sort((a,b)=>Number(a)-Number(b));
+return {
+id:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`,
+filename:file.name,method:base.method,dataset:base.dataset,fingerprint:base.fingerprint,
+metrics,rareRows,metricRegistry:base.metricRegistry||{},sourceFormat:"multi-seed HTML",
+seedRuns,seedCount:seedRuns.length,includedSeedCount:included.length,
+excludedSeeds:seedRuns.filter(r=>r.included===false).map(r=>r.methodSeed),
+availableSeeds:seedRuns.map(r=>r.methodSeed).filter(x=>x!==null&&x!==undefined),
+expectedSeeds:exp,
+seedCoverageWarning:exp.length>0 && seedRuns.filter(r=>r.methodSeed!==null&&r.methodSeed!==undefined).length<exp.length,
+meta:{...base.meta}
+};
+}
+function normalizeReportPayload(D,file){
+if(D?.report_type==="scrarebench_multi_run"){
+const seedRuns=(D.runs||[]).map((entry,i)=>{
+const r=normalizePayload(entry.payload||{},file);
+r.methodSeed=entry.method_seed??r.methodSeed??null;
+r.method_seed=r.methodSeed;
+r.included=entry.included!==false;
+r.runId=entry.run_id||`run-${i+1}`;
+r.configurationHash=entry.configuration_hash||entry.evaluation_contract_hash||entry.payload?.meta?.configuration_hash||null;
+r.evaluationContractHash=entry.evaluation_contract_hash||entry.configuration_hash||entry.payload?.meta?.evaluation_contract_hash||null;
+r.methodTrainingHash=entry.method_training_hash||entry.payload?.meta?.method_training_hash||null;
+r.datasetFingerprint=entry.dataset_fingerprint||entry.payload?.meta?.dataset_fingerprint||null;
+r.datasetContractSha256=entry.dataset_contract_sha256||entry.payload?.meta?.dataset_contract_sha256||null;
+r.cellOrderSha256=entry.cell_order_sha256||entry.payload?.meta?.cell_order_sha256||null;
+r.latentSha256=entry.latent_sha256||entry.payload?.meta?.latent_sha256||null;
+r.benchmarkSeed=entry.benchmark_seed??entry.payload?.meta?.benchmark_seed??null;
+r.methodConfiguration=entry.method_configuration||null;
+if(entry.method_name)r.method=String(entry.method_name);
+if(entry.dataset_key)r.dataset=String(entry.dataset_key);
+if(r.datasetFingerprint)r.fingerprint=String(r.datasetFingerprint);
+r.generatedByVersion=D.generated_by?.version||null;
+return r;
+});
+const out=aggregateNormalizedRuns(seedRuns,file,D.expected_seeds||[]);
+out.sourceFormat=`interactive HTML · schema ${D.schema_version||"?"}${seedRuns.length>1?" · multi-seed":""}`;
+out.generatedByVersion=D.generated_by?.version||null;
+return out;
+}
+const one=normalizePayload(D,file);
+one.seedRuns=[one];one.seedCount=1;one.includedSeedCount=1;
+one.availableSeeds=one.methodSeed==null?[]:[one.methodSeed];
+one.expectedSeeds=one.availableSeeds.slice();one.excludedSeeds=[];one.seedCoverageWarning=false;
+one.sourceFormat="compatible interactive HTML";
+return one;
+}
+function datasetLabelForResults(R, filename){
+const d=R.dataset||{};
+const idx=d.dataset_index ?? d.index;
+if(idx!==null && idx!==undefined && String(idx)!=="") return `Dataset ${idx}`;
+const key=d.dataset_key || d.key;
+const name=d.display_name || d.dataset_name;
+if(key || name) return String(name || key);
+const b=R.benchmark||{};
+const fp=[b.n_cells??"?",b.n_batches??"?",b.n_cell_types??"?",R.rare?.rows?.length??"?",R.provenance?.latent?.shape?.[1]??"?"].join("|");
+if(state.fingerprintLabels.has(fp)) return state.fingerprintLabels.get(fp);
+const num=datasetNumberFromFilename(filename);
+const label=num!==null?`Dataset ${num}`:`Dataset ${String.fromCharCode(65+(state.nextDatasetLetter++%26))}`;
+state.fingerprintLabels.set(fp,label); return label;
+}
+function normalizeResultsPayload(R, file){
+if(!R || !R.schema_version || !R.method || !R.benchmark) throw new Error("JSON does not look like a compatible scRareBench results payload.");
+const metrics={}, registry=R.metric_registry||{};
+const subsetRows=R.metrics?.subset?.rows||R.metrics?.subset||[];
+for(const row of subsetRows){
+const subset=row.subset;if(!["overall","rare","non_rare"].includes(subset)) continue;const fam=`Core · ${subset}`;
+for(const [k,v] of Object.entries(row)){if(CORE_EXCLUDE.has(k)||!isNum(v))continue;const info=registry[k]||{};addMetric(metrics,`${fam}::${k}`,info.label||k.replaceAll("_"," "),fam,v,inferDirection(k,registry));}
+}
+const rareSummaryRows=R.rare?.summary?.rows||R.rare?.summary||[];
+for(const row of rareSummaryRows){if(!row.metric||!isNum(row.mean))continue;const info=registry[row.metric]||{};addMetric(metrics,`Rare summary::${row.metric}`,`${info.label||row.metric.replaceAll("_"," ")} mean`,"Rare summary",row.mean,inferDirection(row.metric,registry));}
+const scibMetricRows=R.scib?.metrics?.rows||R.scib?.metrics||[];
+for(const row of scibMetricRows){if(row.status&&row.status!=="computed")continue;if(!row.metric||!isNum(row.value))continue;const info=registry[row.metric]||{};addMetric(metrics,`scIB::${row.metric}`,info.label||row.metric,"scIB",row.value,inferDirection(row.metric,registry));}
+const scibAggRows=R.scib?.aggregates?.rows||R.scib?.aggregates||[];
+for(const row of scibAggRows){if(row.status&&row.status!=="computed")continue;if(!row.metric||!isNum(row.value))continue;const info=registry[row.metric]||{};addMetric(metrics,`scIB aggregate::${row.metric}`,info.label||row.metric,"scIB aggregate",row.value,inferDirection(row.metric,registry));}
+const rareSource=R.rare?.rows?.rows||R.rare?.rows||[];
+const rareRows=rareSource.map(r=>({cell_type:r.cell_type,scenario:r.scenario||"",distribution:r.distribution||"",topology:r.topology||"",support:r.support,failure_archetype:r.failure_archetype_v2||r.failure_archetype||"",failure_archetype_v2:r.failure_archetype_v2||"",failure_archetype_legacy:r.failure_archetype||"",failure_matched_archetypes:r.failure_matched_archetypes_v2||r.failure_matched_archetypes||"",...Object.fromEntries(RARE_CELL_METRICS.map(k=>[k,isNum(r[k])?r[k]:null]))}));
+const b=R.benchmark||{},d=R.dataset||{},method=R.method?.name||String(R.method?.representation_key||"").replace(/^X_/,"")||file.name;
+const fp=R.run?.dataset_fingerprint||R.provenance?.dataset_fingerprint||[d.dataset_key??d.key??"?",d.dataset_index??d.index??"?",b.n_cells??"?",b.n_batches??"?",b.n_cell_types??"?",R.provenance?.cell_order_sha256??"?"].join("|");
+return {id:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`,filename:file.name,method,dataset:datasetLabelForResults(R,file.name),fingerprint:String(fp),metrics,rareRows,metricRegistry:registry,sourceFormat:"results.json",methodSeed:R.run?.method_seed??R.provenance?.method_seed??null,method_seed:R.run?.method_seed??R.provenance?.method_seed??null,included:true,runId:R.run?.run_id??R.provenance?.run_id??null,configurationHash:R.run?.configuration_hash??R.provenance?.configuration_hash??null,datasetFingerprint:R.run?.dataset_fingerprint??R.provenance?.dataset_fingerprint??null,meta:{n_cells:b.n_cells,n_dimensions:b.n_dimensions,n_batches:b.n_batches,n_cell_types:b.n_cell_types,n_rare_types:rareRows.length,n_rare_cells:null,representation_key:R.method?.representation_key,scib_backend:R.scib?.status?.backend||"scib-metrics",scib_backend_version:R.scib?.status?.backend_version||""}};
+}
+async function parseImportedFile(file){
+const lower=file.name.toLowerCase();
+if(lower.endsWith(".json")){
+const obj=JSON.parse(await file.text());
+if(obj?.report_type==="scrarebench_multi_run") return normalizeReportPayload(obj,file);
+const one=normalizeResultsPayload(obj,file);one.seedRuns=[one];one.seedCount=1;one.includedSeedCount=1;one.availableSeeds=one.methodSeed==null?[]:[one.methodSeed];one.expectedSeeds=one.availableSeeds.slice();one.excludedSeeds=[];one.seedCoverageWarning=false;return one;
+}
+if(lower.endsWith(".zip")){
+if(typeof JSZip==="undefined") throw new Error("ZIP support failed to initialize (JSZip unavailable).");
+const zip=await JSZip.loadAsync(await file.arrayBuffer());
+const names=Object.keys(zip.files).filter(n=>!zip.files[n].dir);
+const scoreHtml=n=>{
+const s=String(n).toLowerCase();let score=0;
+if(s.includes("multi"))score+=50;
+if(s.includes("merged"))score+=35;
+if(s.includes("interactive_report"))score+=30;
+if(s.includes("/reports/"))score+=15;
+if(s.includes("seed_"))score-=15;
+return score;
+};
+const htmlCandidates=names.filter(n=>/\.html?$/i.test(n)).sort((a,b)=>scoreHtml(b)-scoreHtml(a));
+let firstValid=null;
+for(const htmlName of htmlCandidates){
+try{
+const raw=await zip.file(htmlName).async("string"),payload=extractPayload(raw),norm=normalizeReportPayload(payload,file);
+if(payload?.report_type==="scrarebench_multi_run"&&(payload.runs||[]).length>1)return norm;
+if(!firstValid)firstValid=norm;
+}catch(_){/* keep searching other HTML members */}
+}
+if(firstValid)return firstValid;
+const jsonName=names.find(n=>/(^|\/)benchmark_results\/results\.json$/i.test(n))||names.find(n=>/(^|\/)results\.json$/i.test(n));
+if(jsonName){
+const raw=await zip.file(jsonName).async("string"),one=normalizeResultsPayload(JSON.parse(raw),file);
+one.seedRuns=[one];one.seedCount=1;one.includedSeedCount=1;one.availableSeeds=one.methodSeed==null?[]:[one.methodSeed];
+one.expectedSeeds=one.availableSeeds.slice();one.excludedSeeds=[];one.seedCoverageWarning=false;
+return one;
+}
+throw new Error("ZIP contains neither a compatible scRareBench interactive report nor results.json.");
+}
+const text=await file.text();return normalizeReportPayload(extractPayload(text),file);
+}
+function sameSeed(a,b){return a!==null&&a!==undefined&&b!==null&&b!==undefined&&String(a)===String(b)}
+function exactRunDuplicate(a,b){
+if(a?.runId&&b?.runId&&String(a.runId)===String(b.runId))return true;
+if(!sameSeed(a?.methodSeed,b?.methodSeed))return false;
+const identityKeys=["latentSha256","evaluationContractHash","methodTrainingHash","datasetFingerprint","cellOrderSha256"];
+const comparable=identityKeys.filter(k=>a?.[k]&&b?.[k]);
+return comparable.length>=2 && comparable.every(k=>String(a[k])===String(b[k]));
+}
+function requireCompatibleReplicate(base,run){
+const checks=[
+["configurationHash","evaluation configuration"],
+["evaluationContractHash","evaluation contract"],
+["methodTrainingHash","seed-independent method configuration"],
+["benchmarkSeed","benchmark seed"],
+["datasetFingerprint","dataset/cell universe"],
+["datasetContractSha256","dataset/reference contract"],
+["cellOrderSha256","cell order"],
+];
+for(const [key,label] of checks){
+if(base?.[key]!==null&&base?.[key]!==undefined&&run?.[key]!==null&&run?.[key]!==undefined&&String(base[key])!==String(run[key])){
+throw new Error(`Cannot aggregate seed replicates: ${label} differs.`);
+}
+}
+}
+function mergeComparatorGroups(existing,incoming){
+if(existing.method!==incoming.method||existing.fingerprint!==incoming.fingerprint)throw new Error("Internal merge attempted across different method/dataset groups.");
+const mergedRuns=[...(existing.seedRuns||[])];
+for(const run of incoming.seedRuns||[]){
+const same=mergedRuns.find(x=>sameSeed(x.methodSeed,run.methodSeed)||(run.runId&&x.runId===run.runId));
+if(same){
+if(exactRunDuplicate(same,run))continue;
+throw new Error(`Conflicting duplicate method seed ${run.methodSeed??"not recorded"}; the reports describe different run identities, so the comparator will not double-count or silently replace either run.`);
+}
+const base=mergedRuns[0];
+if(base)requireCompatibleReplicate(base,run);
+mergedRuns.push(run);
+}
+const expected=unique([...(existing.expectedSeeds||[]),...(incoming.expectedSeeds||[]),...mergedRuns.map(r=>r.methodSeed).filter(x=>x!==null&&x!==undefined)]).sort((a,b)=>Number(a)-Number(b));
+const f={name:existing.filename};const out=aggregateNormalizedRuns(mergedRuns,f,expected);
+out.method=existing.method;out.dataset=existing.dataset;out.fingerprint=existing.fingerprint;
+out.filename=[existing.filename,incoming.filename].filter(Boolean).join(" + ");
+out.sourceFormat=unique([existing.sourceFormat,incoming.sourceFormat].filter(Boolean)).join(" + ");
+out.generatedByVersion=existing.generatedByVersion||incoming.generatedByVersion||null;
+return out;
+}
+function metricSD(r,key){const v=r?.metrics?.[key]?.sd;return isNum(v)?v:null}
+function fmtMeanSD(v,sd,n){if(!isNum(v))return "—";return isNum(sd)&&Number(n)>=2?`${fmt(v)} ± ${fmt(sd)}`:fmt(v)}
+function groupSeedSummary(g){
+const planned=(g.expectedSeeds||[]).length,stored=g.seedCount||g.seedRuns?.length||1,included=g.includedSeedCount??stored;
+const excluded=g.excludedSeeds||[];return `${included}/${stored} included${planned?` · ${stored}/${planned} planned stored`:""}${excluded.length?` · excluded: ${excluded.join(", ")}`:""}`;
+}
+function allAvailableSeeds(){return unique(state.groups.flatMap(g=>g.availableSeeds||[])).filter(x=>x!==null&&x!==undefined).sort((a,b)=>Number(a)-Number(b))}
+function rebuildReports(){
+const mode=state.seedMode;
+if(mode==="aggregate"){
+state.reports=state.groups.map(g=>({...g,method:g.method}));
+}else if(mode==="individual"){
+state.reports=state.groups.flatMap(g=>(g.seedRuns||[]).map(r=>({...r,methodSeed:r.methodSeed??r.method_seed??null,method_seed:r.methodSeed??r.method_seed??null,method:`${g.method} · ${(r.methodSeed??r.method_seed)==null?"seed ?":`seed ${r.methodSeed??r.method_seed}`}${r.included===false?" · excluded":""}`,dataset:g.dataset,fingerprint:g.fingerprint,seedCount:1,includedSeedCount:r.included===false?0:1})));
+}else{
+state.reports=state.groups.flatMap(g=>{
+const r=(g.seedRuns||[]).find(x=>String(x.methodSeed)===String(state.specificSeed));
+return r?[{...r,methodSeed:r.methodSeed??r.method_seed??null,method_seed:r.methodSeed??r.method_seed??null,method:g.method,dataset:g.dataset,fingerprint:g.fingerprint,seedCount:1,includedSeedCount:r.included===false?0:1}]:[];
+});
+}
+const seedSel=document.getElementById("specificSeed");
+if(seedSel){const seeds=allAvailableSeeds(),old=String(state.specificSeed??"");seedSel.innerHTML=seeds.map(x=>`<option value="${esc(x)}">Seed ${esc(x)}</option>`).join("");if(seeds.length){if(!seeds.some(x=>String(x)===old))state.specificSeed=seeds[0];seedSel.value=String(state.specificSeed)}seedSel.style.display=state.seedMode==="specific"?"":"none"}
+}
+async function importFiles(files){
+const msgs=document.getElementById("importMessages");msgs.innerHTML="";let good=0,bad=0;
+for(const file of files){setStatus(`Reading ${file.name}…`);try{
+const rec=await parseImportedFile(file);const idx=state.groups.findIndex(r=>r.method===rec.method&&r.fingerprint===rec.fingerprint);
+if(idx>=0) state.groups[idx]=mergeComparatorGroups(state.groups[idx],rec); else state.groups.push(rec);
+good++;const current=idx>=0?state.groups[idx]:rec;msgs.insertAdjacentHTML("beforeend",`<div class="callout good" style="margin-bottom:6px"><b>${esc(file.name)}</b> → ${esc(current.method)} / ${esc(current.dataset)} · ${esc(groupSeedSummary(current))} · ${Object.keys(current.metrics).length} metrics · ${current.rareRows.length} rare-cell rows</div>`);
+}catch(err){bad++;msgs.insertAdjacentHTML("beforeend",`<div class="callout warn" style="margin-bottom:6px"><b>${esc(file.name)}</b><div class="file-error">${esc(err.message||err)}</div></div>`);}await new Promise(r=>setTimeout(r,0));}
+rebuildReports();setStatus(`Processed ${good} report file${good===1?"":"s"}; ${state.groups.length} method × dataset group${state.groups.length===1?"":"s"} loaded${bad?`; ${bad} failed`:""}.`);refreshAll();
+}
+function setStatus(s){document.getElementById("globalStatus").textContent=s}
+function methods(){return unique(state.reports.map(r=>r.method)).sort((a,b)=>a.localeCompare(b))}
+function datasets(){return unique(state.reports.map(r=>r.dataset)).sort(datasetSort)}
+function datasetSort(a,b){
+const na=Number((a.match(/\d+/)||[])[0]), nb=Number((b.match(/\d+/)||[])[0]);
+if(Number.isFinite(na)&&Number.isFinite(nb)) return na-nb;
+return a.localeCompare(b);
+}
+function reportsForDataset(ds){return state.reports.filter(r=>r.dataset===ds).sort((a,b)=>a.method.localeCompare(b.method))}
+function reportsForMethod(m){return state.reports.filter(r=>r.method===m).sort((a,b)=>datasetSort(a.dataset,b.dataset))}
+function allMetricDefs(reports=state.reports){
+const map=new Map();
+for(const r of reports) for(const m of Object.values(r.metrics)) if(!map.has(m.key)) map.set(m.key,{key:m.key,label:m.label,family:m.family,direction:m.direction||"maximize"});
+return [...map.values()].sort((a,b)=>(a.family.localeCompare(b.family)||a.label.localeCompare(b.label)));
+}
+function metricDefsByFamily(reports,family){
+return allMetricDefs(reports).filter(m=>!family||m.family===family);
+}
+function familiesFor(reports){
+const fs=unique(allMetricDefs(reports).map(x=>x.family));
+const order=["Core · overall","Core · rare","Core · non_rare","Rare summary","scIB","scIB aggregate"];
+return order.filter(x=>fs.includes(x)).concat(fs.filter(x=>!order.includes(x)).sort());
+}
+function populateSelect(el, options, preferred=null, placeholder=null){
+const old=preferred??el.value;
+el.innerHTML=(placeholder!==null?`<option value="">${esc(placeholder)}</option>`:"")+options.map(o=>{
+const value=typeof o==="string"?o:o.value, label=typeof o==="string"?o:o.label;
+return `<option value="${esc(value)}">${esc(label)}</option>`;
+}).join("");
+if([...el.options].some(o=>o.value===old)) el.value=old;
+}
+function populateMetricSelect(el, defs, preferred=null, optional=false){
+const old=preferred??el.value;
+const groups={};
+for(const d of defs)(groups[d.family]??=[]).push(d);
+let html=optional?`<option value="">None</option>`:"";
+for(const [fam,arr] of Object.entries(groups)){
+html+=`<optgroup label="${esc(FAMILY_LABELS[fam]||fam)}">`+
+arr.map(d=>`<option value="${esc(d.key)}">${esc(d.label)}</option>`).join("")+`</optgroup>`;
+}
+el.innerHTML=html;
+if([...el.options].some(o=>o.value===old)) el.value=old;
+}
+function metricValue(r,key){return r?.metrics?.[key]?.value}
+function metricLabel(key){
+for(const r of state.reports) if(r.metrics[key]) return r.metrics[key].label;
+return key;
+}
+function metricFamily(key){
+for(const r of state.reports) if(r.metrics[key]) return r.metrics[key].family;
+return "";
+}
+function metricDirection(key){
+for(const r of state.reports) if(r.metrics[key]?.direction) return normalizedDirection(r.metrics[key].direction);
+return inferDirection(metricNameFromKey(key));
+}
+function effectiveDirection(selectId,key){
+const v=document.getElementById(selectId)?.value||"auto";
+return v==="auto"?metricDirection(key):normalizedDirection(v);
+}
+function directionMark(dir){return dir==="minimize"?"↓":(dir==="context"?"↔":"↑")}
+function betterSort(a,b,dir,field){return dir==="minimize"?a[field]-b[field]:b[field]-a[field]}
+function cardHTML(k,v,s=""){return `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>${s?`<div class="s">${esc(s)}</div>`:""}</div>`}
+function emptyHTML(title="No data",detail="Import compatible scRareBench HTML reports first."){return `<div class="empty"><b>${esc(title)}</b><div>${esc(detail)}</div></div>`}
+function prepPlot(id){const el=document.getElementById(id);if(el && el.querySelector(".empty"))el.innerHTML="";return el}
+function renderRegistry(){
+document.getElementById("reportBadge").textContent=`${state.groups.length} group${state.groups.length===1?"":"s"}`;
+const registry=document.getElementById("registry"),cards=document.getElementById("importCards");
+if(!state.groups.length){registry.innerHTML=emptyHTML();cards.innerHTML=cardHTML("Groups","0")+cardHTML("Stored runs","0")+cardHTML("Methods","0")+cardHTML("Datasets","0");return;}
+const totalRuns=state.groups.reduce((n,g)=>n+(g.seedRuns?.length||1),0),included=state.groups.reduce((n,g)=>n+(g.includedSeedCount??1),0);
+const gm=unique(state.groups.map(g=>g.method)).sort(),gd=unique(state.groups.map(g=>g.dataset)).sort(datasetSort);
+cards.innerHTML=cardHTML("Method × dataset groups",state.groups.length,"Aggregate view uses one row per group")+cardHTML("Stored seed runs",totalRuns,`${included} included in saved aggregates`)+cardHTML("Methods",gm.length,gm.join(", "))+cardHTML("Datasets",gd.length,gd.join(", "));
+registry.innerHTML=`<div class="table-wrap"><table><thead><tr><th>File/group</th><th>Method label</th><th>Dataset label</th><th>Seeds</th><th>Representation</th><th>Cells</th><th>Rare types</th><th>Metrics</th><th></th></tr></thead><tbody>${state.groups.map(g=>`<tr data-id="${esc(g.id)}"><td title="${esc(g.filename)}">${esc(g.filename)}</td><td><input class="inline-edit edit-method" data-id="${esc(g.id)}" value="${esc(g.method)}"></td><td><input class="inline-edit edit-dataset" data-id="${esc(g.id)}" value="${esc(g.dataset)}"></td><td>${esc(groupSeedSummary(g))}${g.seedCoverageWarning?'<br><span class="warn-text">incomplete planned seed coverage</span>':''}</td><td class="mono">${esc(g.meta.representation_key||"—")}</td><td>${fmt(g.meta.n_cells)}</td><td>${fmt(g.meta.n_rare_types)}</td><td>${Object.keys(g.metrics).length}</td><td><button class="btn bad small remove-report" data-id="${esc(g.id)}">Remove</button></td></tr>`).join("")}</tbody></table></div><div class="callout" style="margin-top:9px"><b>Seed semantics:</b> aggregate mode uses only runs marked included by the source report. Excluded runs remain visible in individual/specific-seed modes. Mean values are accompanied by sample SD when at least two included seeds are available; one seed never implies SD=0.</div>`;
+registry.querySelectorAll(".edit-method").forEach(x=>x.onchange=()=>{const g=state.groups.find(z=>z.id===x.dataset.id);if(g){g.method=slug(x.value)||g.method;(g.seedRuns||[]).forEach(r=>r.method=g.method);rebuildReports();refreshAll()}});
+registry.querySelectorAll(".edit-dataset").forEach(x=>x.onchange=()=>{const g=state.groups.find(z=>z.id===x.dataset.id);if(g){g.dataset=slug(x.value)||g.dataset;(g.seedRuns||[]).forEach(r=>r.dataset=g.dataset);rebuildReports();refreshAll()}});
+registry.querySelectorAll(".remove-report").forEach(x=>x.onclick=()=>{state.groups=state.groups.filter(z=>z.id!==x.dataset.id);rebuildReports();refreshAll()});
+}
+function renderMethodsTab(){
+const dsSel=document.getElementById("mDataset"), famSel=document.getElementById("mFamily"), metSel=document.getElementById("mMetric");
+populateSelect(dsSel,datasets(),dsSel.value);
+if(!dsSel.value){document.getElementById("methodTable").innerHTML=emptyHTML();return}
+const reps=reportsForDataset(dsSel.value);
+const fams=familiesFor(reps);
+populateSelect(famSel,fams.map(x=>({value:x,label:FAMILY_LABELS[x]||x})),famSel.value||"scIB aggregate");
+const defs=metricDefsByFamily(reps,famSel.value);
+populateMetricSelect(metSel,defs,metSel.value||defs.find(d=>d.key==="scIB aggregate::Total")?.key);
+const missing=methods().filter(m=>!reps.some(r=>r.method===m));
+document.getElementById("methodCards").innerHTML=
+cardHTML("Dataset",dsSel.value,`${reps[0]?.meta.n_cells??"?"} cells · ${reps[0]?.meta.n_batches??"?"} batches`)+
+cardHTML("Available methods",reps.length,reps.map(r=>r.method).join(", "))+
+cardHTML("Missing methods",missing.length,missing.length?missing.join(", "):"None among imported methods")+
+cardHTML("Metrics in family",defs.length,FAMILY_LABELS[famSel.value]||famSel.value);
+renderMatrixComparison(reps,"method",defs,"methodHeatmap","methodTable");
+renderBar(reps,"method",metSel.value,"methodBar");
+}
+function renderDatasetsTab(){
+const mSel=document.getElementById("dMethod"), famSel=document.getElementById("dFamily"), metSel=document.getElementById("dMetric");
+populateSelect(mSel,methods(),mSel.value);
+if(!mSel.value){document.getElementById("datasetTable").innerHTML=emptyHTML();return}
+const reps=reportsForMethod(mSel.value);
+const fams=familiesFor(reps);
+populateSelect(famSel,fams.map(x=>({value:x,label:FAMILY_LABELS[x]||x})),famSel.value||"scIB aggregate");
+const defs=metricDefsByFamily(reps,famSel.value);
+populateMetricSelect(metSel,defs,metSel.value||defs.find(d=>d.key==="scIB aggregate::Total")?.key);
+const missing=datasets().filter(d=>!reps.some(r=>r.dataset===d));
+document.getElementById("datasetCards").innerHTML=
+cardHTML("Method",mSel.value,`${reps[0]?.meta.representation_key||""}`)+
+cardHTML("Available datasets",reps.length,reps.map(r=>r.dataset).join(", "))+
+cardHTML("Coverage gaps",missing.length,missing.length?missing.join(", "):"None among imported datasets")+
+cardHTML("Metrics in family",defs.length,FAMILY_LABELS[famSel.value]||famSel.value);
+renderMatrixComparison(reps,"dataset",defs,"datasetHeatmap","datasetTable");
+renderBar(reps,"dataset",metSel.value,"datasetBar");
+}
+function renderMatrixComparison(reps,dim,defs,plotId,tableId){
+const names=reps.map(r=>r[dim]);if(!reps.length||!defs.length){document.getElementById(tableId).innerHTML=emptyHTML("No comparable metrics");document.getElementById(plotId).innerHTML=emptyHTML("No plot data");return;}
+const z=names.map((_,i)=>defs.map(d=>metricValue(reps[i],d.key)??null));
+const hover=names.map((_,i)=>defs.map(d=>{const r=reps[i],v=metricValue(r,d.key),sd=metricSD(r,d.key),n=r.metrics?.[d.key]?.n;return `${r[dim]}<br>${d.label}: ${fmtMeanSD(v,sd,n)}${n?`<br>n seeds=${n}`:""}`}));
+prepPlot(plotId);Plotly.react(plotId,[{type:"heatmap",z,x:defs.map(d=>d.label),y:names,text:hover,hovertemplate:"%{text}<extra></extra>",hoverongaps:false,colorscale:"Viridis",colorbar:{title:"mean value"}}],{margin:{l:110,r:30,t:20,b:Math.min(220,80+defs.length*4)},paper_bgcolor:"white",plot_bgcolor:"white",xaxis:{tickangle:-35,automargin:true},yaxis:{automargin:true}},{responsive:true,displaylogo:false});
+document.getElementById(tableId).innerHTML=`<div class="table-wrap"><table><thead><tr><th>${dim==="method"?"Method":"Dataset"}</th>${defs.map(d=>`<th title="${esc(d.family)}">${esc(d.label)}</th>`).join("")}</tr></thead><tbody>${reps.map(r=>`<tr><td><b>${esc(r[dim])}</b></td>${defs.map(d=>{const m=r.metrics?.[d.key],v=m?.value;return `<td class="${isNum(v)?"":"missing"}">${fmtMeanSD(v,m?.sd,m?.n)}${m?.n?` <span class="muted">(n=${m.n})</span>`:""}</td>`}).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+function renderBar(reps,dim,key,plotId){
+if(!key){document.getElementById(plotId).innerHTML=emptyHTML("Choose a metric");return}const dir=metricDirection(key);
+const valid=reps.map(r=>({name:r[dim],v:metricValue(r,key),sd:metricSD(r,key),n:r.metrics?.[key]?.n})).filter(x=>isNum(x.v)).sort((a,b)=>dir==="minimize"?a.v-b.v:b.v-a.v);
+if(!valid.length){document.getElementById(plotId).innerHTML=emptyHTML("Metric unavailable");return}prepPlot(plotId);
+Plotly.react(plotId,[{type:"bar",x:valid.map(x=>x.v),y:valid.map(x=>x.name),orientation:"h",error_x:{type:"data",array:valid.map(x=>isNum(x.sd)?x.sd:0),visible:valid.some(x=>isNum(x.sd))},customdata:valid.map(x=>[x.sd,x.n]),text:valid.map(x=>fmtMeanSD(x.v,x.sd,x.n)),textposition:"auto",marker:{color:valid.map((_,i)=>COLORS[i%COLORS.length])},hovertemplate:`<b>%{y}</b><br>mean=%{x:.4f}<br>SD=%{customdata[0]}<br>n seeds=%{customdata[1]}<extra></extra>`}],{margin:{l:120,r:25,t:25,b:55},xaxis:{title:`${metricLabel(key)} · ${dir==="minimize"?"lower":"higher"} is better`},yaxis:{autorange:"reversed"},paper_bgcolor:"white",plot_bgcolor:"white"},{responsive:true,displaylogo:false});
+}
+function paretoFront(points,xdir="maximize",ydir="maximize"){
+if(xdir==="context" || ydir==="context") return [];
+const atLeast=(a,b,dir)=>dir==="minimize"?a<=b:a>=b;
+const strict=(a,b,dir)=>dir==="minimize"?a<b:a>b;
+return points.filter((p,i)=>!points.some((q,j)=>j!==i && atLeast(q.x,p.x,xdir) && atLeast(q.y,p.y,ydir) && (strict(q.x,p.x,xdir)||strict(q.y,p.y,ydir))));
+}
+function renderPlotter(){
+const ds=document.getElementById("pDataset");
+populateSelect(ds,datasets(),ds.value);
+if(!ds.value){["metricScatter","scibScatter","rareTradeoff"].forEach(id=>document.getElementById(id).innerHTML=emptyHTML());return}
+const reps=reportsForDataset(ds.value), defs=allMetricDefs(reps);
+const xSel=document.getElementById("pX"), ySel=document.getElementById("pY"), sSel=document.getElementById("pSize");
+const prefX=xSel.value|| (defs.find(d=>d.key==="scIB aggregate::Bio conservation")?.key || defs[0]?.key);
+const prefY=ySel.value|| (defs.find(d=>d.key==="scIB aggregate::Batch correction")?.key || defs[1]?.key || defs[0]?.key);
+populateMetricSelect(xSel,defs,prefX); populateMetricSelect(ySel,defs,prefY); populateMetricSelect(sSel,defs,sSel.value||"scIB aggregate::Total",true);
+const xk=xSel.value,yk=ySel.value,sk=sSel.value; const xdir=effectiveDirection("pXDir",xk), ydir=effectiveDirection("pYDir",yk);
+const pts=reps.map((r,i)=>({r,x:metricValue(r,xk),y:metricValue(r,yk),xsd:metricSD(r,xk),ysd:metricSD(r,yk),s:sk?metricValue(r,sk):null,i}))
+.filter(p=>isNum(p.x)&&isNum(p.y));
+const skipped=reps.filter(r=>!pts.some(p=>p.r.id===r.id)).map(r=>r.method);
+if(!pts.length){document.getElementById("metricScatter").innerHTML=emptyHTML("No methods contain both selected metrics");return}
+const sizes=pts.map(p=>isNum(p.s)?p.s:null), validS=sizes.filter(isNum);
+const smin=validS.length?Math.min(...validS):0,smax=validS.length?Math.max(...validS):1;
+const markerSizes=pts.map(p=>!isNum(p.s)?16:14+26*((p.s-smin)/(smax-smin||1)));
+const showLabels=document.getElementById("pLabels").checked;
+const traces=[{type:"scatter",mode:showLabels?"markers+text":"markers",x:pts.map(p=>p.x),y:pts.map(p=>p.y),
+text:pts.map(p=>p.r.method),textposition:"top center",name:"Methods",error_x:{type:"data",array:pts.map(p=>isNum(p.xsd)?p.xsd:0),visible:pts.some(p=>isNum(p.xsd))},error_y:{type:"data",array:pts.map(p=>isNum(p.ysd)?p.ysd:0),visible:pts.some(p=>isNum(p.ysd))},marker:{size:markerSizes,color:pts.map((_,i)=>COLORS[i%COLORS.length]),opacity:.86,line:{color:"#fff",width:1.5}},
+customdata:pts.map(p=>[p.r.method,isNum(p.s)?p.s:null]),hovertemplate:`<b>%{customdata[0]}</b><br>${esc(metricLabel(xk))}: %{x:.4f}<br>${esc(metricLabel(yk))}: %{y:.4f}`+(sk?`<br>${esc(metricLabel(sk))}: %{customdata[1]:.4f}`:"")+"<extra></extra>"}];
+const pf=paretoFront(pts,xdir,ydir).sort((a,b)=>a.x-b.x);
+if(document.getElementById("pPareto").checked && pf.length>1){
+traces.push({type:"scatter",mode:"lines+markers",x:pf.map(p=>p.x),y:pf.map(p=>p.y),hoverinfo:"skip",
+line:{color:"#172033",dash:"dot",width:2},marker:{size:7,color:"#172033"},name:"Pareto frontier"});
+}
+prepPlot("metricScatter");
+Plotly.react("metricScatter",traces,{margin:{l:70,r:25,t:30,b:65},xaxis:{title:`${metricLabel(xk)} ${directionMark(xdir)}`},yaxis:{title:`${metricLabel(yk)} ${directionMark(ydir)}`},
+paper_bgcolor:"white",plot_bgcolor:"white",showlegend:traces.length>1},{responsive:true,displaylogo:false});
+const bestX=xdir==="context"?null:[...pts].sort((a,b)=>betterSort(a,b,xdir,"x"))[0],bestY=ydir==="context"?null:[...pts].sort((a,b)=>betterSort(a,b,ydir,"y"))[0];
+const contextNote=(xdir==="context"||ydir==="context")?"Context-only direction detected. Choose an explicit maximize/minimize override to enable Best/Pareto interpretation.":"";
+document.getElementById("plotInsights").innerHTML=
+`<div class="insight"><b>Best X</b><span>${bestX?`${esc(bestX.r.method)} · ${fmt(bestX.x)}`:"Context-only — no automatic best"}</span></div>`+
+`<div class="insight"><b>Best Y</b><span>${bestY?`${esc(bestY.r.method)} · ${fmt(bestY.y)}`:"Context-only — no automatic best"}</span></div>`+
+`<div class="insight"><b>Pareto methods</b><span>${contextNote?esc(contextNote):`${esc(pf.map(p=>p.r.method).join(", ")||"—")} · X ${directionMark(xdir)} / Y ${directionMark(ydir)}`}</span></div>`+
+`<div class="insight"><b>Skipped for missing axes</b><span>${esc(skipped.join(", ")||"None")}</span></div>`;
+renderTradeoff(reps,"scIB aggregate::Bio conservation","scIB aggregate::Batch correction","scibScatter","Bio conservation","Batch correction");
+const rareTradeKey=reps.some(r=>isNum(metricValue(r,"Rare summary::knn_local_recovery_adjusted")))?"Rare summary::knn_local_recovery_adjusted":(reps.some(r=>isNum(metricValue(r,"Rare summary::best_cluster_f1")))?"Rare summary::best_cluster_f1":(reps.some(r=>isNum(metricValue(r,"Rare summary::knn_local_recovery")))?"Rare summary::knn_local_recovery":"Rare summary::f1"));
+renderTradeoff(reps,rareTradeKey,"scIB aggregate::Total","rareTradeoff",metricLabel(rareTradeKey),"scIB Total");
+}
+function renderTradeoff(reps,xk,yk,id,xlab,ylab){
+const pts=reps.map((r,i)=>({r,x:metricValue(r,xk),y:metricValue(r,yk),xsd:metricSD(r,xk),ysd:metricSD(r,yk),i})).filter(p=>isNum(p.x)&&isNum(p.y));
+if(!pts.length){document.getElementById(id).innerHTML=emptyHTML("Required metrics are not jointly available");return}prepPlot(id);
+Plotly.react(id,[{type:"scatter",mode:"markers+text",x:pts.map(p=>p.x),y:pts.map(p=>p.y),error_x:{type:"data",array:pts.map(p=>isNum(p.xsd)?p.xsd:0),visible:pts.some(p=>isNum(p.xsd))},error_y:{type:"data",array:pts.map(p=>isNum(p.ysd)?p.ysd:0),visible:pts.some(p=>isNum(p.ysd))},text:pts.map(p=>p.r.method),textposition:"top center",marker:{size:15,color:pts.map((_,i)=>COLORS[i%COLORS.length])},customdata:pts.map(p=>[p.xsd,p.ysd]),hovertemplate:"<b>%{text}</b><br>x=%{x:.4f} ± %{customdata[0]}<br>y=%{y:.4f} ± %{customdata[1]}<extra></extra>"}],{margin:{l:65,r:20,t:20,b:55},xaxis:{title:xlab},yaxis:{title:ylab},paper_bgcolor:"white",plot_bgcolor:"white"},{responsive:true,displaylogo:false});
+}
+function renderRare(){
+const ds=document.getElementById("rDataset"), met=document.getElementById("rMetric"), sc=document.getElementById("rScenario");
+populateSelect(ds,datasets(),ds.value);
+if(!ds.value){document.getElementById("rareTable").innerHTML=emptyHTML();return}
+const reps=reportsForDataset(ds.value);
+const rareMetricOptions=RARE_CELL_METRICS.filter(k=>reps.some(r=>r.rareRows.some(row=>isNum(row[k])))).map(k=>({value:k,label:(reps.find(r=>r.metricRegistry?.[k])?.metricRegistry?.[k]?.label||k.replaceAll("_"," "))}));
+populateSelect(met,rareMetricOptions,met.value||(rareMetricOptions.some(x=>x.value==="knn_local_recovery_adjusted")?"knn_local_recovery_adjusted":(rareMetricOptions.some(x=>x.value==="best_cluster_f1")?"best_cluster_f1":(rareMetricOptions.some(x=>x.value==="knn_local_recovery")?"knn_local_recovery":"f1"))));
+const scenarios=unique(reps.flatMap(r=>r.rareRows.map(x=>x.scenario).filter(Boolean))).sort();
+const oldSc=sc.value;
+sc.innerHTML=`<option value="">All scenarios</option>`+scenarios.map(x=>`<option>${esc(x)}</option>`).join("");
+if([...sc.options].some(o=>o.value===oldSc))sc.value=oldSc;
+const rowsByMethod=new Map(reps.map(r=>[r.method,r.rareRows.filter(x=>!sc.value||x.scenario===sc.value)]));
+const cellTypes=unique([...rowsByMethod.values()].flatMap(xs=>xs.map(x=>x.cell_type))).sort();
+const z=cellTypes.map(ct=>reps.map(r=>{
+const row=(rowsByMethod.get(r.method)||[]).find(x=>x.cell_type===ct);return row&&isNum(row[met.value])?row[met.value]:null;
+}));
+const values=z.flat().filter(isNum);
+document.getElementById("rareCards").innerHTML=
+cardHTML("Rare populations",cellTypes.length,sc.value||"All scenarios")+
+cardHTML("Methods",reps.length,reps.map(r=>r.method).join(", "))+
+cardHTML("Available values",values.length,met.value.replaceAll("_"," "))+
+cardHTML("Median",fmt(median(values)),"Across visible method × population values");
+if(!cellTypes.length){document.getElementById("rareHeatmap").innerHTML=emptyHTML("No rare-cell rows");document.getElementById("rareTable").innerHTML="";return}
+prepPlot("rareHeatmap");
+const rareDir=inferDirection(met.value,reps.find(r=>r.metricRegistry)?.metricRegistry||null);
+const signedMetric=["knn_local_recovery_adjusted","knn_local_recovery"].includes(met.value);
+const rareHover=cellTypes.map(ct=>reps.map(r=>{const row=(rowsByMethod.get(r.method)||[]).find(x=>x.cell_type===ct),v=row?.[met.value],sd=row?.[`${met.value}_sd`],n=row?.[`${met.value}_n`];return `${ct}<br>${r.method}<br>${fmtMeanSD(v,sd,n)}${n?`<br>n seeds=${n}`:""}`}));
+Plotly.react("rareHeatmap",[{type:"heatmap",z,x:reps.map(r=>r.method),y:cellTypes,text:rareHover,hovertemplate:"%{text}<extra></extra>",hoverongaps:false,colorscale:signedMetric?"RdBu":"Viridis",reversescale:signedMetric,zmin:signedMetric?-1:0,zmax:1,
+colorbar:{title:`${met.options[met.selectedIndex]?.text||met.value} ${directionMark(rareDir)}`}}],
+{margin:{l:Math.min(260,80+Math.max(...cellTypes.map(x=>x.length))*5),r:30,t:20,b:70},xaxis:{tickangle:-25},yaxis:{automargin:true},paper_bgcolor:"white",plot_bgcolor:"white"},
+{responsive:true,displaylogo:false});
+document.getElementById("rareTable").innerHTML=`<div class="table-wrap"><table><thead><tr><th>Cell type</th><th>Scenario</th>`+
+reps.map(r=>`<th>${esc(r.method)}</th>`).join("")+`</tr></thead><tbody>`+
+cellTypes.map(ct=>{
+const scenario=reps.flatMap(r=>r.rareRows).find(x=>x.cell_type===ct)?.scenario||"";
+return `<tr><td><b>${esc(ct)}</b></td><td>${esc(scenario)}</td>`+reps.map(r=>{
+const row=(rowsByMethod.get(r.method)||[]).find(x=>x.cell_type===ct),v=row?.[met.value];
+const sd=row?.[`${met.value}_sd`],n=row?.[`${met.value}_n`];return `<td class="${isNum(v)?"":"missing"}">${fmtMeanSD(v,sd,n)}${n?` <span class="muted">(n=${n})</span>`:""}</td>`;
+}).join("")+`</tr>`;
+}).join("")+`</tbody></table></div>`;
+}
+function renderCoverage(){
+const ms=methods(),ds=datasets();
+const possible=ms.length*ds.length;
+const strictCommon=ds.filter(d=>ms.every(m=>state.reports.some(r=>r.method===m&&r.dataset===d)));
+document.getElementById("coverageCards").innerHTML=
+cardHTML("Visible comparison rows",state.reports.length,`${possible?((100*state.reports.length/possible).toFixed(1)):"0"}% of current method × dataset grid`)+
+cardHTML("Methods",ms.length,ms.join(", "))+
+cardHTML("Datasets",ds.length,ds.join(", "))+
+cardHTML("Strict common datasets",strictCommon.length,strictCommon.join(", ")||"None");
+if(ms.length&&ds.length){
+const z=ms.map(m=>ds.map(d=>state.reports.some(r=>r.method===m&&r.dataset===d)?1:0));
+prepPlot("coverageHeatmap");
+Plotly.react("coverageHeatmap",[{type:"heatmap",z,x:ds,y:ms,zmin:0,zmax:1,showscale:false,
+colorscale:[[0,"#eef1f5"],[.499,"#eef1f5"],[.5,"#3157d5"],[1,"#3157d5"]],
+text:z.map(row=>row.map(v=>v?"available":"missing")),hovertemplate:"%{y} / %{x}<br>%{text}<extra></extra>"}],
+{margin:{l:110,r:20,t:20,b:60},paper_bgcolor:"white",plot_bgcolor:"white"},{responsive:true,displaylogo:false});
+}else document.getElementById("coverageHeatmap").innerHTML=emptyHTML();
+const rankSel=document.getElementById("rankMetric"),defs=allMetricDefs();
+populateMetricSelect(rankSel,defs,rankSel.value||"scIB aggregate::Total");
+renderRanking(rankSel.value);
+}
+function renderRanking(key){
+const ms=methods(), allDs=datasets(), policy=document.getElementById("rankPolicy")?.value||"all", dir=metricDirection(key);
+if(!key || !ms.length){document.getElementById("rankTable").innerHTML=emptyHTML();return}
+if(dir==="context"){
+document.getElementById("rankPlot").innerHTML=emptyHTML("Context-only metric","This metric has no canonical maximize/minimize direction and is intentionally not ranked automatically.");
+document.getElementById("rankTable").innerHTML=`<div class="callout warn"><b>Not automatically rankable.</b> ${esc(metricLabel(key))} is marked context-only in the metric registry. Choose a directional metric for cross-method ranking.</div>`;
+return;
+}
+const commonDs=allDs.filter(d=>ms.every(m=>state.reports.some(r=>r.dataset===d&&r.method===m&&isNum(metricValue(r,key)))));
+const ds=policy==="common"?commonDs:allDs;
+const datasetRanks={};
+for(const d of ds){
+const vals=state.reports.filter(r=>r.dataset===d).map(r=>({m:r.method,v:metricValue(r,key)})).filter(x=>isNum(x.v)).sort((a,b)=>dir==="minimize"?a.v-b.v:b.v-a.v);
+const ranks=new Map();
+for(let i=0;i<vals.length;){
+let j=i+1;
+const anchor=vals[i].v;
+const tied=(x)=>Math.abs(x-anchor)<=1e-12*Math.max(1,Math.abs(anchor),Math.abs(x));
+while(j<vals.length&&tied(vals[j].v))j++;
+const averageRank=((i+1)+j)/2;
+for(let k=i;k<j;k++)ranks.set(vals[k].m,averageRank);
+i=j;
+}
+datasetRanks[d]=ranks;
+}
+const rows=ms.map(m=>{
+const vals=[],ranks=[],covered=[];
+for(const d of ds){
+const r=state.reports.find(x=>x.method===m&&x.dataset===d); const v=r?metricValue(r,key):null;
+if(isNum(v)){vals.push(v);covered.push(d);const rk=datasetRanks[d]?.get(m);if(rk)ranks.push(rk)}
+}
+return {m,meanScore:mean(vals),meanRank:mean(ranks),n:vals.length,covered};
+}).sort((a,b)=>(a.meanRank??Infinity)-(b.meanRank??Infinity));
+const valid=rows.filter(x=>isNum(x.meanRank));
+if(valid.length){
+prepPlot("rankPlot");
+Plotly.react("rankPlot",[{type:"scatter",mode:"markers+text",name:"Mean rank",x:valid.map(x=>x.meanRank),y:valid.map(x=>x.m),
+marker:{size:13,color:valid.map((_,i)=>COLORS[i%COLORS.length])},text:valid.map(x=>`rank ${fmt(x.meanRank)} · ${x.n} ds`),textposition:"middle right",cliponaxis:false,
+hovertemplate:"%{y}<br>Mean rank: %{x:.3f}<extra></extra>"}],
+{margin:{l:130,r:150,t:25,b:60},xaxis:{title:"Mean within-dataset rank · 1 = best",dtick:1,range:[0.7,Math.max(1.3,...valid.map(x=>x.meanRank+.45))]},yaxis:{autorange:"reversed"},paper_bgcolor:"white",plot_bgcolor:"white",showlegend:false},
+{responsive:true,displaylogo:false});
+} else document.getElementById("rankPlot").innerHTML=emptyHTML(policy==="common"?"No strict common dataset has this metric":"Selected metric is unavailable");
+const policyText=policy==="common"?`Strict common-dataset mode: ${commonDs.join(", ")||"no shared datasets"}.`:`All-available mode: each method contributes only where the selected metric exists.`;
+const seedCounts=unique(state.reports.map(r=>r.metrics?.[key]?.n).filter(x=>Number.isFinite(x)));const seedWarning=state.seedMode==="aggregate"&&seedCounts.length>1?` ⚠ Unequal included-seed counts are present (${seedCounts.join(", ")}); inspect uncertainty before interpreting small rank differences.`:"";
+document.getElementById("rankTable").innerHTML=`<div class="callout" style="margin-bottom:9px"><b>Ranking policy:</b> ${esc(policyText+seedWarning)} Metric direction: <b>${dir==="minimize"?"lower is better ↓":"higher is better ↑"}</b>. Missing values are never converted to zero.</div>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Mean score</th><th>Mean rank</th><th>Datasets with metric</th><th>Coverage</th></tr></thead><tbody>`+
+rows.map(x=>`<tr><td><b>${esc(x.m)}</b></td><td>${fmt(x.meanScore)}</td><td>${fmt(x.meanRank)}</td><td>${x.n}</td><td>${esc(x.covered.join(", ")||"—")}</td></tr>`).join("")+`</tbody></table></div>`;
+}
+function safeFilenamePart(value){
+return String(value ?? "")
+.trim()
+.replace(/[^a-zA-Z0-9._-]+/g,"_")
+.replace(/^_+|_+$/g,"")
+.slice(0,90) || "NA";
+}
+function currentPlotFilename(plotId){
+const val=id=>document.getElementById(id)?.value || "";
+const metric=id=>metricLabel(val(id)) || val(id);
+const parts={
+methodHeatmap:["scRareBench",val("mDataset"),"methods","metric_heatmap"],
+methodBar:["scRareBench",val("mDataset"),"methods",metric("mMetric")],
+datasetHeatmap:["scRareBench",val("dMethod"),"datasets","metric_heatmap"],
+datasetBar:["scRareBench",val("dMethod"),"datasets",metric("dMetric")],
+metricScatter:["scRareBench",val("pDataset"),metric("pX"),"vs",metric("pY")],
+scibScatter:["scRareBench",val("pDataset"),"Bio_conservation_vs_Batch_correction"],
+rareTradeoff:["scRareBench",val("pDataset"),"Rare_mean_F1_vs_scIB_Total"],
+rareHeatmap:["scRareBench",val("rDataset"),val("rScenario")||"all_scenarios",val("rMetric"),"rare_heatmap"],
+coverageHeatmap:["scRareBench","method_dataset_coverage"],
+rankPlot:["scRareBench","cross_dataset_rank",metric("rankMetric")]
+}[plotId] || ["scRareBench",plotId];
+return parts.filter(Boolean).map(safeFilenamePart).join("__");
+}
+async function downloadPlotPNG(plotId,button=null){
+const gd=document.getElementById(plotId);
+if(!gd || !Array.isArray(gd.data) || !gd.data.length){
+setStatus(`Nothing to export for ${plotId}. Render the plot first.`);
+return;
+}
+const oldHTML=button?.innerHTML;
+if(button){button.disabled=true;button.innerHTML='<span class="png-icon">…</span> PNG';}
+try{
+// Match the single-report Plotly export behavior, but use 2× scale for a sharper PNG.
+await Plotly.downloadImage(gd,{
+format:"png",
+filename:currentPlotFilename(plotId),
+scale:2
+});
+setStatus(`PNG downloaded: ${currentPlotFilename(plotId)}.png`);
+}catch(err){
+console.error("PNG export failed",err);
+setStatus(`PNG export failed for ${plotId}: ${err?.message || err}`);
+}finally{
+if(button){button.disabled=false;button.innerHTML=oldHTML;}
+}
+}
+function wirePNGExportButtons(){
+document.querySelectorAll(".png-export-btn[data-plot]").forEach(btn=>{
+btn.addEventListener("click",e=>{
+e.preventDefault();e.stopPropagation();
+downloadPlotPNG(btn.dataset.plot,btn);
+});
+});
+}
+function refreshSelectorsAndTabs(){
+renderMethodsTab();renderDatasetsTab();renderPlotter();renderRare();renderCoverage();
+}
+function refreshAll(){renderRegistry();refreshSelectorsAndTabs()}
+function openTab(id){
+document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===id));
+document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.id===`tab-${id}`));
+setTimeout(()=>window.dispatchEvent(new Event("resize")),20);
+}
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
+document.getElementById("importBtn").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("dropZone").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=e=>{if(e.target.files.length)importFiles([...e.target.files]);e.target.value=""};
+document.getElementById("clearBtn").onclick=()=>{state.groups=[];state.reports=[];state.fingerprintLabels.clear();state.nextDatasetLetter=0;state.specificSeed=null;setStatus("Cleared.");rebuildReports();refreshAll()};
+const seedModeEl=document.getElementById("seedMode"),specificSeedEl=document.getElementById("specificSeed");
+seedModeEl.onchange=()=>{state.seedMode=seedModeEl.value;rebuildReports();refreshAll();setStatus(`Seed view: ${state.seedMode}.`)};
+specificSeedEl.onchange=()=>{state.specificSeed=specificSeedEl.value;rebuildReports();refreshAll();setStatus(`Specific seed view: ${state.specificSeed}.`)};
+const dz=document.getElementById("dropZone");
+["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("drag")}));
+dz.addEventListener("drop",e=>{const fs=[...e.dataTransfer.files].filter(f=>/\.(?:html?|json|zip)$/i.test(f.name));if(fs.length)importFiles(fs)});
+["mDataset","mFamily","mMetric"].forEach(id=>document.getElementById(id).onchange=renderMethodsTab);
+["dMethod","dFamily","dMetric"].forEach(id=>document.getElementById(id).onchange=renderDatasetsTab);
+["pDataset","pX","pY","pSize","pXDir","pYDir","pPareto","pLabels"].forEach(id=>document.getElementById(id).onchange=renderPlotter);
+["rDataset","rMetric","rScenario"].forEach(id=>document.getElementById(id).onchange=renderRare);
+["rankMetric","rankPolicy"].forEach(id=>document.getElementById(id).onchange=()=>renderRanking(document.getElementById("rankMetric").value));
+wirePNGExportButtons();
+rebuildReports();
+refreshAll();
+</script>
+</body>
+</html>

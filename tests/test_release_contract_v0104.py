@@ -57,7 +57,7 @@ def _bundle_result(tmp_path: Path):
 
 
 def test_version_and_seed_contract():
-    assert scrarebench.__version__ == "0.10.5"
+    assert scrarebench.__version__ == "0.10.6"
     assert DEFAULT_BENCHMARK_SEED == 42
     assert EvaluationConfig(method_name="m", representation_key="X").random_state == 42
 
@@ -130,7 +130,7 @@ def test_bundle_supports_nonstandard_keys_and_unicode_pickle_free_barcodes(tmp_p
     with zipfile.ZipFile(bundle) as z:
         names = z.namelist()
         manifest = json.loads(z.read("bundle_manifest.json"))
-        assert manifest["scrarebench_version"] == "0.10.5"
+        assert manifest["scrarebench_version"] == "0.10.6"
         assert manifest["cell_order_sha256"]
         results = json.loads(z.read("benchmark_results/results.json"))
         assert results["benchmark"]["label_key"] == "labels"
@@ -232,14 +232,14 @@ def test_evaluate_latent_end_to_end_with_explicit_scenarios(tmp_path: Path, monk
 
 def test_release_metadata_is_synchronized():
     root = Path(__file__).parents[1]
-    assert "Current release: `0.10.5`" in (root / "README.md").read_text(encoding="utf-8")
+    assert "Current release: `0.10.6`" in (root / "README.md").read_text(encoding="utf-8")
     citation = (root / "CITATION.cff").read_text(encoding="utf-8")
-    assert "version: 0.10.5" in citation
-    assert "# scRareBench 0.10.5" in (root / "DESIGN_NOTES.md").read_text(encoding="utf-8")
+    assert "version: 0.10.6" in citation
+    assert "# scRareBench 0.10.6" in (root / "DESIGN_NOTES.md").read_text(encoding="utf-8")
     for notebook in (root / "notebooks").glob("*.ipynb"):
         payload = json.loads(notebook.read_text(encoding="utf-8"))
         sources = "\n".join("".join(cell.get("source", [])) for cell in payload.get("cells", []))
         if "EXPECTED_SCRAREBENCH_VERSION" in sources:
-            assert 'EXPECTED_SCRAREBENCH_VERSION = "0.10.5"' in sources
+            assert 'EXPECTED_SCRAREBENCH_VERSION = "0.10.6"' in sources
             assert 'EXPECTED_SCRAREBENCH_VERSION = "0.9.1"' not in sources
             assert 'EXPECTED_SCRAREBENCH_VERSION = "0.9.2"' not in sources
