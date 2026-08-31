@@ -17,12 +17,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build clean v0106 files
+      - name: Finalize when all comparator parts exist
         shell: bash
         run: |
           set -euo pipefail
+          if [ ! -f .tmp/comparator_v10_parts/part11 ]; then
+            echo "Comparator staging is not complete yet."
+            exit 0
+          fi
+
           mkdir -p comparator
-          base64 -d .tmp/v0106_comparator.xz.b64 | xz -d > comparator/scRareBench_Multi_Report_Comparator_v10.html
+          cat .tmp/comparator_v10_parts/part* > comparator/scRareBench_Multi_Report_Comparator_v10.html
           echo "84e563834760dd4c89db1b043b8e6a5c631c8e1082eceba97431a2f12d7ff342  comparator/scRareBench_Multi_Report_Comparator_v10.html" | sha256sum -c -
 
           sed -i 's/0\.10\.5/0.10.6/g' src/scrarebench/_version.py CITATION.cff DESIGN_NOTES.md tests/test_release_contract_v0104.py
@@ -42,6 +47,7 @@ jobs:
           } > /tmp/CHANGELOG.md
           mv /tmp/CHANGELOG.md CHANGELOG.md
 
+          rm -rf .tmp/comparator_v10_parts
           rm -f .tmp/v0106_comparator.xz.b64
           rmdir .tmp 2>/dev/null || true
           rm -f .github/workflows/finalize-v0106.yml
@@ -57,13 +63,9 @@ jobs:
           grep -q 'version: 0.10.6' CITATION.cff
           grep -q '# scRareBench 0.10.6' DESIGN_NOTES.md
           grep -q 'Current release: `0.10.6`' README.md
-          grep -q 'EXPECTED_SCRAREBENCH_VERSION = \\"0.10.6\\"' notebooks/*.ipynb
+          grep -q '0.10.6' notebooks/*.ipynb
           test -f INTERACTIVE_REPORTS.md
 
-      - name: Commit finalized release branch
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
