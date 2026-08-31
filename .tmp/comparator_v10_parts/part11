@@ -1,0 +1,74 @@
+etric_heatmap"],
+datasetBar:["scRareBench",val("dMethod"),"datasets",metric("dMetric")],
+metricScatter:["scRareBench",val("pDataset"),metric("pX"),"vs",metric("pY")],
+scibScatter:["scRareBench",val("pDataset"),"Bio_conservation_vs_Batch_correction"],
+rareTradeoff:["scRareBench",val("pDataset"),"Rare_mean_F1_vs_scIB_Total"],
+rareHeatmap:["scRareBench",val("rDataset"),val("rScenario")||"all_scenarios",val("rMetric"),"rare_heatmap"],
+coverageHeatmap:["scRareBench","method_dataset_coverage"],
+rankPlot:["scRareBench","cross_dataset_rank",metric("rankMetric")]
+}[plotId] || ["scRareBench",plotId];
+return parts.filter(Boolean).map(safeFilenamePart).join("__");
+}
+async function downloadPlotPNG(plotId,button=null){
+const gd=document.getElementById(plotId);
+if(!gd || !Array.isArray(gd.data) || !gd.data.length){
+setStatus(`Nothing to export for ${plotId}. Render the plot first.`);
+return;
+}
+const oldHTML=button?.innerHTML;
+if(button){button.disabled=true;button.innerHTML='<span class="png-icon">…</span> PNG';}
+try{
+// Match the single-report Plotly export behavior, but use 2× scale for a sharper PNG.
+await Plotly.downloadImage(gd,{
+format:"png",
+filename:currentPlotFilename(plotId),
+scale:2
+});
+setStatus(`PNG downloaded: ${currentPlotFilename(plotId)}.png`);
+}catch(err){
+console.error("PNG export failed",err);
+setStatus(`PNG export failed for ${plotId}: ${err?.message || err}`);
+}finally{
+if(button){button.disabled=false;button.innerHTML=oldHTML;}
+}
+}
+function wirePNGExportButtons(){
+document.querySelectorAll(".png-export-btn[data-plot]").forEach(btn=>{
+btn.addEventListener("click",e=>{
+e.preventDefault();e.stopPropagation();
+downloadPlotPNG(btn.dataset.plot,btn);
+});
+});
+}
+function refreshSelectorsAndTabs(){
+renderMethodsTab();renderDatasetsTab();renderPlotter();renderRare();renderCoverage();
+}
+function refreshAll(){renderRegistry();refreshSelectorsAndTabs()}
+function openTab(id){
+document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===id));
+document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.id===`tab-${id}`));
+setTimeout(()=>window.dispatchEvent(new Event("resize")),20);
+}
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
+document.getElementById("importBtn").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("dropZone").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=e=>{if(e.target.files.length)importFiles([...e.target.files]);e.target.value=""};
+document.getElementById("clearBtn").onclick=()=>{state.groups=[];state.reports=[];state.fingerprintLabels.clear();state.nextDatasetLetter=0;state.specificSeed=null;setStatus("Cleared.");rebuildReports();refreshAll()};
+const seedModeEl=document.getElementById("seedMode"),specificSeedEl=document.getElementById("specificSeed");
+seedModeEl.onchange=()=>{state.seedMode=seedModeEl.value;rebuildReports();refreshAll();setStatus(`Seed view: ${state.seedMode}.`)};
+specificSeedEl.onchange=()=>{state.specificSeed=specificSeedEl.value;rebuildReports();refreshAll();setStatus(`Specific seed view: ${state.specificSeed}.`)};
+const dz=document.getElementById("dropZone");
+["dragenter","dragover"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("drag")}));
+dz.addEventListener("drop",e=>{const fs=[...e.dataTransfer.files].filter(f=>/\.(?:html?|json|zip)$/i.test(f.name));if(fs.length)importFiles(fs)});
+["mDataset","mFamily","mMetric"].forEach(id=>document.getElementById(id).onchange=renderMethodsTab);
+["dMethod","dFamily","dMetric"].forEach(id=>document.getElementById(id).onchange=renderDatasetsTab);
+["pDataset","pX","pY","pSize","pXDir","pYDir","pPareto","pLabels"].forEach(id=>document.getElementById(id).onchange=renderPlotter);
+["rDataset","rMetric","rScenario"].forEach(id=>document.getElementById(id).onchange=renderRare);
+["rankMetric","rankPolicy"].forEach(id=>document.getElementById(id).onchange=()=>renderRanking(document.getElementById("rankMetric").value));
+wirePNGExportButtons();
+rebuildReports();
+refreshAll();
+</script>
+</body>
+</html>
