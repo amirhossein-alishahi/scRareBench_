@@ -1,0 +1,29 @@
+name: Inspect staged docs payload
+on:
+  push:
+    branches: [docs/interactive-reports-comparator-v10]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode staged payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .tmp/interactive_docs/part* | base64 -d > /tmp/payload.bin
+          echo "size=$(stat -c%s /tmp/payload.bin)"
+          sha256sum /tmp/payload.bin
+          file /tmp/payload.bin
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          p=Path('/tmp/payload.bin')
+          if zipfile.is_zipfile(p):
+              with zipfile.ZipFile(p) as z:
+                  for i in z.infolist(): print(i.filename, i.file_size)
+          else:
+              print(p.read_bytes()[:80])
+          PY
