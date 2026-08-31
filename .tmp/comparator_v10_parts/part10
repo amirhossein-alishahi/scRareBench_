@@ -1,0 +1,95 @@
+gcolor:"white"},
+{responsive:true,displaylogo:false});
+document.getElementById("rareTable").innerHTML=`<div class="table-wrap"><table><thead><tr><th>Cell type</th><th>Scenario</th>`+
+reps.map(r=>`<th>${esc(r.method)}</th>`).join("")+`</tr></thead><tbody>`+
+cellTypes.map(ct=>{
+const scenario=reps.flatMap(r=>r.rareRows).find(x=>x.cell_type===ct)?.scenario||"";
+return `<tr><td><b>${esc(ct)}</b></td><td>${esc(scenario)}</td>`+reps.map(r=>{
+const row=(rowsByMethod.get(r.method)||[]).find(x=>x.cell_type===ct),v=row?.[met.value];
+const sd=row?.[`${met.value}_sd`],n=row?.[`${met.value}_n`];return `<td class="${isNum(v)?"":"missing"}">${fmtMeanSD(v,sd,n)}${n?` <span class="muted">(n=${n})</span>`:""}</td>`;
+}).join("")+`</tr>`;
+}).join("")+`</tbody></table></div>`;
+}
+function renderCoverage(){
+const ms=methods(),ds=datasets();
+const possible=ms.length*ds.length;
+const strictCommon=ds.filter(d=>ms.every(m=>state.reports.some(r=>r.method===m&&r.dataset===d)));
+document.getElementById("coverageCards").innerHTML=
+cardHTML("Visible comparison rows",state.reports.length,`${possible?((100*state.reports.length/possible).toFixed(1)):"0"}% of current method × dataset grid`)+
+cardHTML("Methods",ms.length,ms.join(", "))+
+cardHTML("Datasets",ds.length,ds.join(", "))+
+cardHTML("Strict common datasets",strictCommon.length,strictCommon.join(", ")||"None");
+if(ms.length&&ds.length){
+const z=ms.map(m=>ds.map(d=>state.reports.some(r=>r.method===m&&r.dataset===d)?1:0));
+prepPlot("coverageHeatmap");
+Plotly.react("coverageHeatmap",[{type:"heatmap",z,x:ds,y:ms,zmin:0,zmax:1,showscale:false,
+colorscale:[[0,"#eef1f5"],[.499,"#eef1f5"],[.5,"#3157d5"],[1,"#3157d5"]],
+text:z.map(row=>row.map(v=>v?"available":"missing")),hovertemplate:"%{y} / %{x}<br>%{text}<extra></extra>"}],
+{margin:{l:110,r:20,t:20,b:60},paper_bgcolor:"white",plot_bgcolor:"white"},{responsive:true,displaylogo:false});
+}else document.getElementById("coverageHeatmap").innerHTML=emptyHTML();
+const rankSel=document.getElementById("rankMetric"),defs=allMetricDefs();
+populateMetricSelect(rankSel,defs,rankSel.value||"scIB aggregate::Total");
+renderRanking(rankSel.value);
+}
+function renderRanking(key){
+const ms=methods(), allDs=datasets(), policy=document.getElementById("rankPolicy")?.value||"all", dir=metricDirection(key);
+if(!key || !ms.length){document.getElementById("rankTable").innerHTML=emptyHTML();return}
+if(dir==="context"){
+document.getElementById("rankPlot").innerHTML=emptyHTML("Context-only metric","This metric has no canonical maximize/minimize direction and is intentionally not ranked automatically.");
+document.getElementById("rankTable").innerHTML=`<div class="callout warn"><b>Not automatically rankable.</b> ${esc(metricLabel(key))} is marked context-only in the metric registry. Choose a directional metric for cross-method ranking.</div>`;
+return;
+}
+const commonDs=allDs.filter(d=>ms.every(m=>state.reports.some(r=>r.dataset===d&&r.method===m&&isNum(metricValue(r,key)))));
+const ds=policy==="common"?commonDs:allDs;
+const datasetRanks={};
+for(const d of ds){
+const vals=state.reports.filter(r=>r.dataset===d).map(r=>({m:r.method,v:metricValue(r,key)})).filter(x=>isNum(x.v)).sort((a,b)=>dir==="minimize"?a.v-b.v:b.v-a.v);
+const ranks=new Map();
+for(let i=0;i<vals.length;){
+let j=i+1;
+const anchor=vals[i].v;
+const tied=(x)=>Math.abs(x-anchor)<=1e-12*Math.max(1,Math.abs(anchor),Math.abs(x));
+while(j<vals.length&&tied(vals[j].v))j++;
+const averageRank=((i+1)+j)/2;
+for(let k=i;k<j;k++)ranks.set(vals[k].m,averageRank);
+i=j;
+}
+datasetRanks[d]=ranks;
+}
+const rows=ms.map(m=>{
+const vals=[],ranks=[],covered=[];
+for(const d of ds){
+const r=state.reports.find(x=>x.method===m&&x.dataset===d); const v=r?metricValue(r,key):null;
+if(isNum(v)){vals.push(v);covered.push(d);const rk=datasetRanks[d]?.get(m);if(rk)ranks.push(rk)}
+}
+return {m,meanScore:mean(vals),meanRank:mean(ranks),n:vals.length,covered};
+}).sort((a,b)=>(a.meanRank??Infinity)-(b.meanRank??Infinity));
+const valid=rows.filter(x=>isNum(x.meanRank));
+if(valid.length){
+prepPlot("rankPlot");
+Plotly.react("rankPlot",[{type:"scatter",mode:"markers+text",name:"Mean rank",x:valid.map(x=>x.meanRank),y:valid.map(x=>x.m),
+marker:{size:13,color:valid.map((_,i)=>COLORS[i%COLORS.length])},text:valid.map(x=>`rank ${fmt(x.meanRank)} · ${x.n} ds`),textposition:"middle right",cliponaxis:false,
+hovertemplate:"%{y}<br>Mean rank: %{x:.3f}<extra></extra>"}],
+{margin:{l:130,r:150,t:25,b:60},xaxis:{title:"Mean within-dataset rank · 1 = best",dtick:1,range:[0.7,Math.max(1.3,...valid.map(x=>x.meanRank+.45))]},yaxis:{autorange:"reversed"},paper_bgcolor:"white",plot_bgcolor:"white",showlegend:false},
+{responsive:true,displaylogo:false});
+} else document.getElementById("rankPlot").innerHTML=emptyHTML(policy==="common"?"No strict common dataset has this metric":"Selected metric is unavailable");
+const policyText=policy==="common"?`Strict common-dataset mode: ${commonDs.join(", ")||"no shared datasets"}.`:`All-available mode: each method contributes only where the selected metric exists.`;
+const seedCounts=unique(state.reports.map(r=>r.metrics?.[key]?.n).filter(x=>Number.isFinite(x)));const seedWarning=state.seedMode==="aggregate"&&seedCounts.length>1?` ⚠ Unequal included-seed counts are present (${seedCounts.join(", ")}); inspect uncertainty before interpreting small rank differences.`:"";
+document.getElementById("rankTable").innerHTML=`<div class="callout" style="margin-bottom:9px"><b>Ranking policy:</b> ${esc(policyText+seedWarning)} Metric direction: <b>${dir==="minimize"?"lower is better ↓":"higher is better ↑"}</b>. Missing values are never converted to zero.</div>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Mean score</th><th>Mean rank</th><th>Datasets with metric</th><th>Coverage</th></tr></thead><tbody>`+
+rows.map(x=>`<tr><td><b>${esc(x.m)}</b></td><td>${fmt(x.meanScore)}</td><td>${fmt(x.meanRank)}</td><td>${x.n}</td><td>${esc(x.covered.join(", ")||"—")}</td></tr>`).join("")+`</tbody></table></div>`;
+}
+function safeFilenamePart(value){
+return String(value ?? "")
+.trim()
+.replace(/[^a-zA-Z0-9._-]+/g,"_")
+.replace(/^_+|_+$/g,"")
+.slice(0,90) || "NA";
+}
+function currentPlotFilename(plotId){
+const val=id=>document.getElementById(id)?.value || "";
+const metric=id=>metricLabel(val(id)) || val(id);
+const parts={
+methodHeatmap:["scRareBench",val("mDataset"),"methods","metric_heatmap"],
+methodBar:["scRareBench",val("mDataset"),"methods",metric("mMetric")],
+datasetHeatmap:["scRareBench",val("dMethod"),"datasets","m
