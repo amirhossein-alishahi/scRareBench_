@@ -1,0 +1,38 @@
+name: Inspect interactive payload
+on:
+  push:
+    branches: [docs/interactive-reports-comparator-v10]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect staged archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .tmp/interactive_docs/part* > /tmp/payload.b64
+          base64 -d /tmp/payload.b64 > /tmp/payload.bin
+          sha256sum /tmp/payload.bin
+          file /tmp/payload.bin
+          python - <<'PY'
+          import io, lzma, tarfile, zipfile, pathlib, hashlib
+          raw=pathlib.Path('/tmp/payload.bin').read_bytes()
+          print('raw_bytes', len(raw), 'raw_sha256', hashlib.sha256(raw).hexdigest())
+          data=lzma.decompress(raw) if raw.startswith(b'\xfd7zXZ\x00') else raw
+          print('decoded_bytes', len(data), 'prefix', data[:16])
+          names=[]
+          try:
+              with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as tf:
+                  names=tf.getnames()
+                  print('archive=tar')
+          except tarfile.ReadError:
+              if zipfile.is_zipfile(io.BytesIO(data)):
+                  with zipfile.ZipFile(io.BytesIO(data)) as z: names=z.namelist()
+                  print('archive=zip')
+              else:
+                  print('archive=unknown')
+          for n in names: print('MEMBER', n)
+          PY
