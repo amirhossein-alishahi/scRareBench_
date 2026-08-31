@@ -1,0 +1,87 @@
+
+["configurationHash","evaluation configuration"],
+["evaluationContractHash","evaluation contract"],
+["methodTrainingHash","seed-independent method configuration"],
+["benchmarkSeed","benchmark seed"],
+["datasetFingerprint","dataset/cell universe"],
+["datasetContractSha256","dataset/reference contract"],
+["cellOrderSha256","cell order"],
+];
+for(const [key,label] of checks){
+if(base?.[key]!==null&&base?.[key]!==undefined&&run?.[key]!==null&&run?.[key]!==undefined&&String(base[key])!==String(run[key])){
+throw new Error(`Cannot aggregate seed replicates: ${label} differs.`);
+}
+}
+}
+function mergeComparatorGroups(existing,incoming){
+if(existing.method!==incoming.method||existing.fingerprint!==incoming.fingerprint)throw new Error("Internal merge attempted across different method/dataset groups.");
+const mergedRuns=[...(existing.seedRuns||[])];
+for(const run of incoming.seedRuns||[]){
+const same=mergedRuns.find(x=>sameSeed(x.methodSeed,run.methodSeed)||(run.runId&&x.runId===run.runId));
+if(same){
+if(exactRunDuplicate(same,run))continue;
+throw new Error(`Conflicting duplicate method seed ${run.methodSeed??"not recorded"}; the reports describe different run identities, so the comparator will not double-count or silently replace either run.`);
+}
+const base=mergedRuns[0];
+if(base)requireCompatibleReplicate(base,run);
+mergedRuns.push(run);
+}
+const expected=unique([...(existing.expectedSeeds||[]),...(incoming.expectedSeeds||[]),...mergedRuns.map(r=>r.methodSeed).filter(x=>x!==null&&x!==undefined)]).sort((a,b)=>Number(a)-Number(b));
+const f={name:existing.filename};const out=aggregateNormalizedRuns(mergedRuns,f,expected);
+out.method=existing.method;out.dataset=existing.dataset;out.fingerprint=existing.fingerprint;
+out.filename=[existing.filename,incoming.filename].filter(Boolean).join(" + ");
+out.sourceFormat=unique([existing.sourceFormat,incoming.sourceFormat].filter(Boolean)).join(" + ");
+out.generatedByVersion=existing.generatedByVersion||incoming.generatedByVersion||null;
+return out;
+}
+function metricSD(r,key){const v=r?.metrics?.[key]?.sd;return isNum(v)?v:null}
+function fmtMeanSD(v,sd,n){if(!isNum(v))return "—";return isNum(sd)&&Number(n)>=2?`${fmt(v)} ± ${fmt(sd)}`:fmt(v)}
+function groupSeedSummary(g){
+const planned=(g.expectedSeeds||[]).length,stored=g.seedCount||g.seedRuns?.length||1,included=g.includedSeedCount??stored;
+const excluded=g.excludedSeeds||[];return `${included}/${stored} included${planned?` · ${stored}/${planned} planned stored`:""}${excluded.length?` · excluded: ${excluded.join(", ")}`:""}`;
+}
+function allAvailableSeeds(){return unique(state.groups.flatMap(g=>g.availableSeeds||[])).filter(x=>x!==null&&x!==undefined).sort((a,b)=>Number(a)-Number(b))}
+function rebuildReports(){
+const mode=state.seedMode;
+if(mode==="aggregate"){
+state.reports=state.groups.map(g=>({...g,method:g.method}));
+}else if(mode==="individual"){
+state.reports=state.groups.flatMap(g=>(g.seedRuns||[]).map(r=>({...r,methodSeed:r.methodSeed??r.method_seed??null,method_seed:r.methodSeed??r.method_seed??null,method:`${g.method} · ${(r.methodSeed??r.method_seed)==null?"seed ?":`seed ${r.methodSeed??r.method_seed}`}${r.included===false?" · excluded":""}`,dataset:g.dataset,fingerprint:g.fingerprint,seedCount:1,includedSeedCount:r.included===false?0:1})));
+}else{
+state.reports=state.groups.flatMap(g=>{
+const r=(g.seedRuns||[]).find(x=>String(x.methodSeed)===String(state.specificSeed));
+return r?[{...r,methodSeed:r.methodSeed??r.method_seed??null,method_seed:r.methodSeed??r.method_seed??null,method:g.method,dataset:g.dataset,fingerprint:g.fingerprint,seedCount:1,includedSeedCount:r.included===false?0:1}]:[];
+});
+}
+const seedSel=document.getElementById("specificSeed");
+if(seedSel){const seeds=allAvailableSeeds(),old=String(state.specificSeed??"");seedSel.innerHTML=seeds.map(x=>`<option value="${esc(x)}">Seed ${esc(x)}</option>`).join("");if(seeds.length){if(!seeds.some(x=>String(x)===old))state.specificSeed=seeds[0];seedSel.value=String(state.specificSeed)}seedSel.style.display=state.seedMode==="specific"?"":"none"}
+}
+async function importFiles(files){
+const msgs=document.getElementById("importMessages");msgs.innerHTML="";let good=0,bad=0;
+for(const file of files){setStatus(`Reading ${file.name}…`);try{
+const rec=await parseImportedFile(file);const idx=state.groups.findIndex(r=>r.method===rec.method&&r.fingerprint===rec.fingerprint);
+if(idx>=0) state.groups[idx]=mergeComparatorGroups(state.groups[idx],rec); else state.groups.push(rec);
+good++;const current=idx>=0?state.groups[idx]:rec;msgs.insertAdjacentHTML("beforeend",`<div class="callout good" style="margin-bottom:6px"><b>${esc(file.name)}</b> → ${esc(current.method)} / ${esc(current.dataset)} · ${esc(groupSeedSummary(current))} · ${Object.keys(current.metrics).length} metrics · ${current.rareRows.length} rare-cell rows</div>`);
+}catch(err){bad++;msgs.insertAdjacentHTML("beforeend",`<div class="callout warn" style="margin-bottom:6px"><b>${esc(file.name)}</b><div class="file-error">${esc(err.message||err)}</div></div>`);}await new Promise(r=>setTimeout(r,0));}
+rebuildReports();setStatus(`Processed ${good} report file${good===1?"":"s"}; ${state.groups.length} method × dataset group${state.groups.length===1?"":"s"} loaded${bad?`; ${bad} failed`:""}.`);refreshAll();
+}
+function setStatus(s){document.getElementById("globalStatus").textContent=s}
+function methods(){return unique(state.reports.map(r=>r.method)).sort((a,b)=>a.localeCompare(b))}
+function datasets(){return unique(state.reports.map(r=>r.dataset)).sort(datasetSort)}
+function datasetSort(a,b){
+const na=Number((a.match(/\d+/)||[])[0]), nb=Number((b.match(/\d+/)||[])[0]);
+if(Number.isFinite(na)&&Number.isFinite(nb)) return na-nb;
+return a.localeCompare(b);
+}
+function reportsForDataset(ds){return state.reports.filter(r=>r.dataset===ds).sort((a,b)=>a.method.localeCompare(b.method))}
+function reportsForMethod(m){return state.reports.filter(r=>r.method===m).sort((a,b)=>datasetSort(a.dataset,b.dataset))}
+function allMetricDefs(reports=state.reports){
+const map=new Map();
+for(const r of reports) for(const m of Object.values(r.metrics)) if(!map.has(m.key)) map.set(m.key,{key:m.key,label:m.label,family:m.family,direction:m.direction||"maximize"});
+return [...map.values()].sort((a,b)=>(a.family.localeCompare(b.family)||a.label.localeCompare(b.label)));
+}
+function metricDefsByFamily(reports,family){
+return allMetricDefs(reports).filter(m=>!family||m.family===family);
+}
+function familiesFor(reports){
+const fs=unique(
