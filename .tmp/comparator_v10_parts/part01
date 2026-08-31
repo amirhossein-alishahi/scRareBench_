@@ -1,0 +1,83 @@
+ow">scRareBench analysis utility</div>
+<h1>Multi-Report Comparator v10</h1>
+<p>Import current scRareBench v0.10.6/schema-1.6 interactive reports, multi-seed reports, result ZIPs, results.json files, and compatible legacy HTML reports. Compare methods within a dataset or datasets within a method, inspect seed-aware aggregates and individual runs, build direction-aware metric plots, explore rare-cell recovery, and audit coverage without treating missing runs as zero. Files are processed locally in the browser; Plotly and JSZip are loaded from pinned public CDNs.</p>
+</div></header>
+<div class="shell">
+<div class="topbar">
+<button class="btn" id="importBtn">Import reports</button>
+<input accept=".html,.htm,.json,.zip,text/html,application/json,application/zip" hidden="" id="fileInput" multiple="" type="file"/>
+<button class="btn secondary" id="clearBtn">Clear all</button>
+<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)">Seed view
+<select id="seedMode"><option value="aggregate">Aggregate included seeds</option><option value="individual">Show individual seeds</option><option value="specific">Specific seed</option></select>
+</label>
+<select aria-label="Specific method seed" id="specificSeed" style="display:none;min-width:105px"></select>
+<span class="status" id="globalStatus">No reports imported.</span>
+<span class="spacer"></span>
+<span class="badge" id="reportBadge">0 reports</span>
+</div>
+<nav class="tabs">
+<button class="tab-btn active" data-tab="import">Import &amp; Data</button>
+<button class="tab-btn" data-tab="methods">Methods on Dataset</button>
+<button class="tab-btn" data-tab="datasets">Datasets for Method</button>
+<button class="tab-btn" data-tab="plotter">Metric Plotter</button>
+<button class="tab-btn" data-tab="rare">Rare-cell Deep Dive</button>
+<button class="tab-btn" data-tab="coverage">Coverage &amp; Ranking</button>
+</nav>
+<section class="tab active" id="tab-import">
+<div class="panel">
+<div class="panel-title"><span>Import scRareBench results</span><small>v0.10.6 multi-seed HTML / single-run HTML / ZIP / results.json · compatible legacy HTML · processed locally</small></div>
+<div class="panel-body">
+<div class="import-drop" id="dropZone">
+<b>Drop scRareBench interactive .html, result .zip, or results.json files here</b>
+<span class="note">or click this area / the Import reports button. Nothing is uploaded to a server.</span>
+</div>
+<div id="importMessages" style="margin-top:10px"></div>
+</div>
+</div>
+<div class="cards" id="importCards"></div>
+<div class="panel">
+<div class="panel-title"><span>Imported report registry</span><small>Edit method or dataset labels if automatic detection is ambiguous</small></div>
+<div class="panel-body" id="registry"></div>
+</div>
+</section>
+<section class="tab" id="tab-methods">
+<p class="section-note">Compare all imported methods that are available for one dataset. Missing method–dataset combinations remain missing and are never imputed as zero.</p>
+<div class="panel"><div class="panel-title"><span>Controls</span></div><div class="panel-body">
+<div class="control-row">
+<div><label>Dataset</label><select id="mDataset"></select></div>
+<div><label>Metric family</label><select id="mFamily"></select></div>
+<div><label>Bar-chart metric</label><select id="mMetric"></select></div>
+</div>
+</div></div>
+<div class="cards" id="methodCards"></div>
+<div class="grid-half">
+<div class="panel"><div class="panel-title"><span>Metric heatmap</span><button class="btn small png-export-btn" data-plot="methodHeatmap" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="methodHeatmap"></div></div></div>
+<div class="panel"><div class="panel-title"><span>Selected metric</span><button class="btn small png-export-btn" data-plot="methodBar" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="methodBar"></div></div></div>
+</div>
+<div class="panel"><div class="panel-title"><span>Comparison table</span></div><div class="panel-body" id="methodTable"></div></div>
+</section>
+<section class="tab" id="tab-datasets">
+<p class="section-note">Compare one integration method across every dataset for which that method has a report. Datasets that exist for other methods but not the selected method are shown as coverage gaps.</p>
+<div class="panel"><div class="panel-title"><span>Controls</span></div><div class="panel-body">
+<div class="control-row">
+<div><label>Method</label><select id="dMethod"></select></div>
+<div><label>Metric family</label><select id="dFamily"></select></div>
+<div><label>Bar-chart metric</label><select id="dMetric"></select></div>
+</div>
+</div></div>
+<div class="cards" id="datasetCards"></div>
+<div class="grid-half">
+<div class="panel"><div class="panel-title"><span>Metric heatmap</span><button class="btn small png-export-btn" data-plot="datasetHeatmap" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="datasetHeatmap"></div></div></div>
+<div class="panel"><div class="panel-title"><span>Selected metric</span><button class="btn small png-export-btn" data-plot="datasetBar" title="Download this plot as a high-resolution PNG"><span class="png-icon">⇩</span> PNG</button></div><div class="panel-body"><div class="plot" id="datasetBar"></div></div></div>
+</div>
+<div class="panel"><div class="panel-title"><span>Comparison table</span></div><div class="panel-body" id="datasetTable"></div></div>
+</section>
+<section class="tab" id="tab-plotter">
+<p class="section-note">Build a method scatter plot for one dataset. Metric direction is read from the report metric registry when available and can be overridden manually. Methods missing either selected axis are explicitly skipped.</p>
+<div class="grid2">
+<div class="panel"><div class="panel-title"><span>Plot builder</span></div><div class="panel-body controls">
+<div><label>Dataset</label><select id="pDataset"></select></div>
+<div><label>X metric</label><select id="pX"></select></div>
+<div><label>Y metric</label><select id="pY"></select></div>
+<div><label>X direction</label><select id="pXDir"><option value="auto">Auto (registry)</option><option value="maximize">Maximize ↑</option><option value="minimize">Minimize ↓</option></select></div>
+<div><label>Y direction</label><select id="pYDir"><option value="a
