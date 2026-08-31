@@ -1,0 +1,55 @@
+stomdata[0]}</b><br>${esc(metricLabel(xk))}: %{x:.4f}<br>${esc(metricLabel(yk))}: %{y:.4f}`+(sk?`<br>${esc(metricLabel(sk))}: %{customdata[1]:.4f}`:"")+"<extra></extra>"}];
+const pf=paretoFront(pts,xdir,ydir).sort((a,b)=>a.x-b.x);
+if(document.getElementById("pPareto").checked && pf.length>1){
+traces.push({type:"scatter",mode:"lines+markers",x:pf.map(p=>p.x),y:pf.map(p=>p.y),hoverinfo:"skip",
+line:{color:"#172033",dash:"dot",width:2},marker:{size:7,color:"#172033"},name:"Pareto frontier"});
+}
+prepPlot("metricScatter");
+Plotly.react("metricScatter",traces,{margin:{l:70,r:25,t:30,b:65},xaxis:{title:`${metricLabel(xk)} ${directionMark(xdir)}`},yaxis:{title:`${metricLabel(yk)} ${directionMark(ydir)}`},
+paper_bgcolor:"white",plot_bgcolor:"white",showlegend:traces.length>1},{responsive:true,displaylogo:false});
+const bestX=xdir==="context"?null:[...pts].sort((a,b)=>betterSort(a,b,xdir,"x"))[0],bestY=ydir==="context"?null:[...pts].sort((a,b)=>betterSort(a,b,ydir,"y"))[0];
+const contextNote=(xdir==="context"||ydir==="context")?"Context-only direction detected. Choose an explicit maximize/minimize override to enable Best/Pareto interpretation.":"";
+document.getElementById("plotInsights").innerHTML=
+`<div class="insight"><b>Best X</b><span>${bestX?`${esc(bestX.r.method)} · ${fmt(bestX.x)}`:"Context-only — no automatic best"}</span></div>`+
+`<div class="insight"><b>Best Y</b><span>${bestY?`${esc(bestY.r.method)} · ${fmt(bestY.y)}`:"Context-only — no automatic best"}</span></div>`+
+`<div class="insight"><b>Pareto methods</b><span>${contextNote?esc(contextNote):`${esc(pf.map(p=>p.r.method).join(", ")||"—")} · X ${directionMark(xdir)} / Y ${directionMark(ydir)}`}</span></div>`+
+`<div class="insight"><b>Skipped for missing axes</b><span>${esc(skipped.join(", ")||"None")}</span></div>`;
+renderTradeoff(reps,"scIB aggregate::Bio conservation","scIB aggregate::Batch correction","scibScatter","Bio conservation","Batch correction");
+const rareTradeKey=reps.some(r=>isNum(metricValue(r,"Rare summary::knn_local_recovery_adjusted")))?"Rare summary::knn_local_recovery_adjusted":(reps.some(r=>isNum(metricValue(r,"Rare summary::best_cluster_f1")))?"Rare summary::best_cluster_f1":(reps.some(r=>isNum(metricValue(r,"Rare summary::knn_local_recovery")))?"Rare summary::knn_local_recovery":"Rare summary::f1"));
+renderTradeoff(reps,rareTradeKey,"scIB aggregate::Total","rareTradeoff",metricLabel(rareTradeKey),"scIB Total");
+}
+function renderTradeoff(reps,xk,yk,id,xlab,ylab){
+const pts=reps.map((r,i)=>({r,x:metricValue(r,xk),y:metricValue(r,yk),xsd:metricSD(r,xk),ysd:metricSD(r,yk),i})).filter(p=>isNum(p.x)&&isNum(p.y));
+if(!pts.length){document.getElementById(id).innerHTML=emptyHTML("Required metrics are not jointly available");return}prepPlot(id);
+Plotly.react(id,[{type:"scatter",mode:"markers+text",x:pts.map(p=>p.x),y:pts.map(p=>p.y),error_x:{type:"data",array:pts.map(p=>isNum(p.xsd)?p.xsd:0),visible:pts.some(p=>isNum(p.xsd))},error_y:{type:"data",array:pts.map(p=>isNum(p.ysd)?p.ysd:0),visible:pts.some(p=>isNum(p.ysd))},text:pts.map(p=>p.r.method),textposition:"top center",marker:{size:15,color:pts.map((_,i)=>COLORS[i%COLORS.length])},customdata:pts.map(p=>[p.xsd,p.ysd]),hovertemplate:"<b>%{text}</b><br>x=%{x:.4f} ± %{customdata[0]}<br>y=%{y:.4f} ± %{customdata[1]}<extra></extra>"}],{margin:{l:65,r:20,t:20,b:55},xaxis:{title:xlab},yaxis:{title:ylab},paper_bgcolor:"white",plot_bgcolor:"white"},{responsive:true,displaylogo:false});
+}
+function renderRare(){
+const ds=document.getElementById("rDataset"), met=document.getElementById("rMetric"), sc=document.getElementById("rScenario");
+populateSelect(ds,datasets(),ds.value);
+if(!ds.value){document.getElementById("rareTable").innerHTML=emptyHTML();return}
+const reps=reportsForDataset(ds.value);
+const rareMetricOptions=RARE_CELL_METRICS.filter(k=>reps.some(r=>r.rareRows.some(row=>isNum(row[k])))).map(k=>({value:k,label:(reps.find(r=>r.metricRegistry?.[k])?.metricRegistry?.[k]?.label||k.replaceAll("_"," "))}));
+populateSelect(met,rareMetricOptions,met.value||(rareMetricOptions.some(x=>x.value==="knn_local_recovery_adjusted")?"knn_local_recovery_adjusted":(rareMetricOptions.some(x=>x.value==="best_cluster_f1")?"best_cluster_f1":(rareMetricOptions.some(x=>x.value==="knn_local_recovery")?"knn_local_recovery":"f1"))));
+const scenarios=unique(reps.flatMap(r=>r.rareRows.map(x=>x.scenario).filter(Boolean))).sort();
+const oldSc=sc.value;
+sc.innerHTML=`<option value="">All scenarios</option>`+scenarios.map(x=>`<option>${esc(x)}</option>`).join("");
+if([...sc.options].some(o=>o.value===oldSc))sc.value=oldSc;
+const rowsByMethod=new Map(reps.map(r=>[r.method,r.rareRows.filter(x=>!sc.value||x.scenario===sc.value)]));
+const cellTypes=unique([...rowsByMethod.values()].flatMap(xs=>xs.map(x=>x.cell_type))).sort();
+const z=cellTypes.map(ct=>reps.map(r=>{
+const row=(rowsByMethod.get(r.method)||[]).find(x=>x.cell_type===ct);return row&&isNum(row[met.value])?row[met.value]:null;
+}));
+const values=z.flat().filter(isNum);
+document.getElementById("rareCards").innerHTML=
+cardHTML("Rare populations",cellTypes.length,sc.value||"All scenarios")+
+cardHTML("Methods",reps.length,reps.map(r=>r.method).join(", "))+
+cardHTML("Available values",values.length,met.value.replaceAll("_"," "))+
+cardHTML("Median",fmt(median(values)),"Across visible method × population values");
+if(!cellTypes.length){document.getElementById("rareHeatmap").innerHTML=emptyHTML("No rare-cell rows");document.getElementById("rareTable").innerHTML="";return}
+prepPlot("rareHeatmap");
+const rareDir=inferDirection(met.value,reps.find(r=>r.metricRegistry)?.metricRegistry||null);
+const signedMetric=["knn_local_recovery_adjusted","knn_local_recovery"].includes(met.value);
+const rareHover=cellTypes.map(ct=>reps.map(r=>{const row=(rowsByMethod.get(r.method)||[]).find(x=>x.cell_type===ct),v=row?.[met.value],sd=row?.[`${met.value}_sd`],n=row?.[`${met.value}_n`];return `${ct}<br>${r.method}<br>${fmtMeanSD(v,sd,n)}${n?`<br>n seeds=${n}`:""}`}));
+Plotly.react("rareHeatmap",[{type:"heatmap",z,x:reps.map(r=>r.method),y:cellTypes,text:rareHover,hovertemplate:"%{text}<extra></extra>",hoverongaps:false,colorscale:signedMetric?"RdBu":"Viridis",reversescale:signedMetric,zmin:signedMetric?-1:0,zmax:1,
+colorbar:{title:`${met.options[met.selectedIndex]?.text||met.value} ${directionMark(rareDir)}`}}],
+{margin:{l:Math.min(260,80+Math.max(...cellTypes.map(x=>x.length))*5),r:30,t:20,b:70},xaxis:{tickangle:-25},yaxis:{automargin:true},paper_bgcolor:"white",plot_b
