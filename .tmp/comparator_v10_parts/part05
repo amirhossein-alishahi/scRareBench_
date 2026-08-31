@@ -1,0 +1,75 @@
+e(filename);
+const label=num!==null?`Dataset ${num}`:`Dataset ${String.fromCharCode(65+(state.nextDatasetLetter++%26))}`;
+state.fingerprintLabels.set(fp,label); return label;
+}
+function normalizeResultsPayload(R, file){
+if(!R || !R.schema_version || !R.method || !R.benchmark) throw new Error("JSON does not look like a compatible scRareBench results payload.");
+const metrics={}, registry=R.metric_registry||{};
+const subsetRows=R.metrics?.subset?.rows||R.metrics?.subset||[];
+for(const row of subsetRows){
+const subset=row.subset;if(!["overall","rare","non_rare"].includes(subset)) continue;const fam=`Core · ${subset}`;
+for(const [k,v] of Object.entries(row)){if(CORE_EXCLUDE.has(k)||!isNum(v))continue;const info=registry[k]||{};addMetric(metrics,`${fam}::${k}`,info.label||k.replaceAll("_"," "),fam,v,inferDirection(k,registry));}
+}
+const rareSummaryRows=R.rare?.summary?.rows||R.rare?.summary||[];
+for(const row of rareSummaryRows){if(!row.metric||!isNum(row.mean))continue;const info=registry[row.metric]||{};addMetric(metrics,`Rare summary::${row.metric}`,`${info.label||row.metric.replaceAll("_"," ")} mean`,"Rare summary",row.mean,inferDirection(row.metric,registry));}
+const scibMetricRows=R.scib?.metrics?.rows||R.scib?.metrics||[];
+for(const row of scibMetricRows){if(row.status&&row.status!=="computed")continue;if(!row.metric||!isNum(row.value))continue;const info=registry[row.metric]||{};addMetric(metrics,`scIB::${row.metric}`,info.label||row.metric,"scIB",row.value,inferDirection(row.metric,registry));}
+const scibAggRows=R.scib?.aggregates?.rows||R.scib?.aggregates||[];
+for(const row of scibAggRows){if(row.status&&row.status!=="computed")continue;if(!row.metric||!isNum(row.value))continue;const info=registry[row.metric]||{};addMetric(metrics,`scIB aggregate::${row.metric}`,info.label||row.metric,"scIB aggregate",row.value,inferDirection(row.metric,registry));}
+const rareSource=R.rare?.rows?.rows||R.rare?.rows||[];
+const rareRows=rareSource.map(r=>({cell_type:r.cell_type,scenario:r.scenario||"",distribution:r.distribution||"",topology:r.topology||"",support:r.support,failure_archetype:r.failure_archetype_v2||r.failure_archetype||"",failure_archetype_v2:r.failure_archetype_v2||"",failure_archetype_legacy:r.failure_archetype||"",failure_matched_archetypes:r.failure_matched_archetypes_v2||r.failure_matched_archetypes||"",...Object.fromEntries(RARE_CELL_METRICS.map(k=>[k,isNum(r[k])?r[k]:null]))}));
+const b=R.benchmark||{},d=R.dataset||{},method=R.method?.name||String(R.method?.representation_key||"").replace(/^X_/,"")||file.name;
+const fp=R.run?.dataset_fingerprint||R.provenance?.dataset_fingerprint||[d.dataset_key??d.key??"?",d.dataset_index??d.index??"?",b.n_cells??"?",b.n_batches??"?",b.n_cell_types??"?",R.provenance?.cell_order_sha256??"?"].join("|");
+return {id:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`,filename:file.name,method,dataset:datasetLabelForResults(R,file.name),fingerprint:String(fp),metrics,rareRows,metricRegistry:registry,sourceFormat:"results.json",methodSeed:R.run?.method_seed??R.provenance?.method_seed??null,method_seed:R.run?.method_seed??R.provenance?.method_seed??null,included:true,runId:R.run?.run_id??R.provenance?.run_id??null,configurationHash:R.run?.configuration_hash??R.provenance?.configuration_hash??null,datasetFingerprint:R.run?.dataset_fingerprint??R.provenance?.dataset_fingerprint??null,meta:{n_cells:b.n_cells,n_dimensions:b.n_dimensions,n_batches:b.n_batches,n_cell_types:b.n_cell_types,n_rare_types:rareRows.length,n_rare_cells:null,representation_key:R.method?.representation_key,scib_backend:R.scib?.status?.backend||"scib-metrics",scib_backend_version:R.scib?.status?.backend_version||""}};
+}
+async function parseImportedFile(file){
+const lower=file.name.toLowerCase();
+if(lower.endsWith(".json")){
+const obj=JSON.parse(await file.text());
+if(obj?.report_type==="scrarebench_multi_run") return normalizeReportPayload(obj,file);
+const one=normalizeResultsPayload(obj,file);one.seedRuns=[one];one.seedCount=1;one.includedSeedCount=1;one.availableSeeds=one.methodSeed==null?[]:[one.methodSeed];one.expectedSeeds=one.availableSeeds.slice();one.excludedSeeds=[];one.seedCoverageWarning=false;return one;
+}
+if(lower.endsWith(".zip")){
+if(typeof JSZip==="undefined") throw new Error("ZIP support failed to initialize (JSZip unavailable).");
+const zip=await JSZip.loadAsync(await file.arrayBuffer());
+const names=Object.keys(zip.files).filter(n=>!zip.files[n].dir);
+const scoreHtml=n=>{
+const s=String(n).toLowerCase();let score=0;
+if(s.includes("multi"))score+=50;
+if(s.includes("merged"))score+=35;
+if(s.includes("interactive_report"))score+=30;
+if(s.includes("/reports/"))score+=15;
+if(s.includes("seed_"))score-=15;
+return score;
+};
+const htmlCandidates=names.filter(n=>/\.html?$/i.test(n)).sort((a,b)=>scoreHtml(b)-scoreHtml(a));
+let firstValid=null;
+for(const htmlName of htmlCandidates){
+try{
+const raw=await zip.file(htmlName).async("string"),payload=extractPayload(raw),norm=normalizeReportPayload(payload,file);
+if(payload?.report_type==="scrarebench_multi_run"&&(payload.runs||[]).length>1)return norm;
+if(!firstValid)firstValid=norm;
+}catch(_){/* keep searching other HTML members */}
+}
+if(firstValid)return firstValid;
+const jsonName=names.find(n=>/(^|\/)benchmark_results\/results\.json$/i.test(n))||names.find(n=>/(^|\/)results\.json$/i.test(n));
+if(jsonName){
+const raw=await zip.file(jsonName).async("string"),one=normalizeResultsPayload(JSON.parse(raw),file);
+one.seedRuns=[one];one.seedCount=1;one.includedSeedCount=1;one.availableSeeds=one.methodSeed==null?[]:[one.methodSeed];
+one.expectedSeeds=one.availableSeeds.slice();one.excludedSeeds=[];one.seedCoverageWarning=false;
+return one;
+}
+throw new Error("ZIP contains neither a compatible scRareBench interactive report nor results.json.");
+}
+const text=await file.text();return normalizeReportPayload(extractPayload(text),file);
+}
+function sameSeed(a,b){return a!==null&&a!==undefined&&b!==null&&b!==undefined&&String(a)===String(b)}
+function exactRunDuplicate(a,b){
+if(a?.runId&&b?.runId&&String(a.runId)===String(b.runId))return true;
+if(!sameSeed(a?.methodSeed,b?.methodSeed))return false;
+const identityKeys=["latentSha256","evaluationContractHash","methodTrainingHash","datasetFingerprint","cellOrderSha256"];
+const comparable=identityKeys.filter(k=>a?.[k]&&b?.[k]);
+return comparable.length>=2 && comparable.every(k=>String(a[k])===String(b[k]));
+}
+function requireCompatibleReplicate(base,run){
+const checks=[
