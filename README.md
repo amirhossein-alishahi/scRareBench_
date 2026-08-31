@@ -41,7 +41,7 @@ A scRareBench run does not end with a collection of CSV files. It can produce a 
 
 The report combines benchmark scores, rare-population diagnostics, UMAP/Sankey views, reproducibility metadata, sensitivity views, and seed management in one portable artifact. Canonical benchmark results remain immutable; exploratory controls are visually separated from the reported result.
 
-> **Screenshot placeholder — add:** `docs/images/report_overview.webp`
+![scRareBench interactive report overview](docs/images/report_overview.webp)
 
 The main report tabs include:
 
@@ -59,13 +59,13 @@ The main report tabs include:
 
 The rare-cell layer is designed to make local failures inspectable rather than hiding them behind a single global score.
 
-> **Screenshot placeholder — add:** `docs/images/report_rare_explorer.webp`
+![scRareBench Rare-cell Explorer](docs/images/report_rare_explorer.webp)
 
 ### Native multi-seed workspace
 
 For stochastic integration methods, scRareBench can keep several method seeds in one report. The report stores each run separately and aggregates **metrics**, not latent geometry.
 
-> **Screenshot placeholder — add:** `docs/images/report_seed_stability.webp`
+![scRareBench multi-seed stability view](docs/images/report_seed_stability.webp)
 
 A multi-seed report lets you:
 
@@ -94,7 +94,7 @@ Open the file in a browser and import scRareBench outputs by drag-and-drop or wi
 
 The comparator accepts current v0.10.6/schema-1.6 single-run and multi-seed interactive HTML reports, result ZIPs, `results.json`, and compatible legacy HTML reports.
 
-> **Screenshot placeholder — add:** `docs/images/comparator_methods_v10.webp`
+![scRareBench Comparator v10 methods view](docs/images/comparator_methods_v10.webp)
 
 It provides:
 
