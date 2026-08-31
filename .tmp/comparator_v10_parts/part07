@@ -1,0 +1,74 @@
+allMetricDefs(reports).map(x=>x.family));
+const order=["Core · overall","Core · rare","Core · non_rare","Rare summary","scIB","scIB aggregate"];
+return order.filter(x=>fs.includes(x)).concat(fs.filter(x=>!order.includes(x)).sort());
+}
+function populateSelect(el, options, preferred=null, placeholder=null){
+const old=preferred??el.value;
+el.innerHTML=(placeholder!==null?`<option value="">${esc(placeholder)}</option>`:"")+options.map(o=>{
+const value=typeof o==="string"?o:o.value, label=typeof o==="string"?o:o.label;
+return `<option value="${esc(value)}">${esc(label)}</option>`;
+}).join("");
+if([...el.options].some(o=>o.value===old)) el.value=old;
+}
+function populateMetricSelect(el, defs, preferred=null, optional=false){
+const old=preferred??el.value;
+const groups={};
+for(const d of defs)(groups[d.family]??=[]).push(d);
+let html=optional?`<option value="">None</option>`:"";
+for(const [fam,arr] of Object.entries(groups)){
+html+=`<optgroup label="${esc(FAMILY_LABELS[fam]||fam)}">`+
+arr.map(d=>`<option value="${esc(d.key)}">${esc(d.label)}</option>`).join("")+`</optgroup>`;
+}
+el.innerHTML=html;
+if([...el.options].some(o=>o.value===old)) el.value=old;
+}
+function metricValue(r,key){return r?.metrics?.[key]?.value}
+function metricLabel(key){
+for(const r of state.reports) if(r.metrics[key]) return r.metrics[key].label;
+return key;
+}
+function metricFamily(key){
+for(const r of state.reports) if(r.metrics[key]) return r.metrics[key].family;
+return "";
+}
+function metricDirection(key){
+for(const r of state.reports) if(r.metrics[key]?.direction) return normalizedDirection(r.metrics[key].direction);
+return inferDirection(metricNameFromKey(key));
+}
+function effectiveDirection(selectId,key){
+const v=document.getElementById(selectId)?.value||"auto";
+return v==="auto"?metricDirection(key):normalizedDirection(v);
+}
+function directionMark(dir){return dir==="minimize"?"↓":(dir==="context"?"↔":"↑")}
+function betterSort(a,b,dir,field){return dir==="minimize"?a[field]-b[field]:b[field]-a[field]}
+function cardHTML(k,v,s=""){return `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>${s?`<div class="s">${esc(s)}</div>`:""}</div>`}
+function emptyHTML(title="No data",detail="Import compatible scRareBench HTML reports first."){return `<div class="empty"><b>${esc(title)}</b><div>${esc(detail)}</div></div>`}
+function prepPlot(id){const el=document.getElementById(id);if(el && el.querySelector(".empty"))el.innerHTML="";return el}
+function renderRegistry(){
+document.getElementById("reportBadge").textContent=`${state.groups.length} group${state.groups.length===1?"":"s"}`;
+const registry=document.getElementById("registry"),cards=document.getElementById("importCards");
+if(!state.groups.length){registry.innerHTML=emptyHTML();cards.innerHTML=cardHTML("Groups","0")+cardHTML("Stored runs","0")+cardHTML("Methods","0")+cardHTML("Datasets","0");return;}
+const totalRuns=state.groups.reduce((n,g)=>n+(g.seedRuns?.length||1),0),included=state.groups.reduce((n,g)=>n+(g.includedSeedCount??1),0);
+const gm=unique(state.groups.map(g=>g.method)).sort(),gd=unique(state.groups.map(g=>g.dataset)).sort(datasetSort);
+cards.innerHTML=cardHTML("Method × dataset groups",state.groups.length,"Aggregate view uses one row per group")+cardHTML("Stored seed runs",totalRuns,`${included} included in saved aggregates`)+cardHTML("Methods",gm.length,gm.join(", "))+cardHTML("Datasets",gd.length,gd.join(", "));
+registry.innerHTML=`<div class="table-wrap"><table><thead><tr><th>File/group</th><th>Method label</th><th>Dataset label</th><th>Seeds</th><th>Representation</th><th>Cells</th><th>Rare types</th><th>Metrics</th><th></th></tr></thead><tbody>${state.groups.map(g=>`<tr data-id="${esc(g.id)}"><td title="${esc(g.filename)}">${esc(g.filename)}</td><td><input class="inline-edit edit-method" data-id="${esc(g.id)}" value="${esc(g.method)}"></td><td><input class="inline-edit edit-dataset" data-id="${esc(g.id)}" value="${esc(g.dataset)}"></td><td>${esc(groupSeedSummary(g))}${g.seedCoverageWarning?'<br><span class="warn-text">incomplete planned seed coverage</span>':''}</td><td class="mono">${esc(g.meta.representation_key||"—")}</td><td>${fmt(g.meta.n_cells)}</td><td>${fmt(g.meta.n_rare_types)}</td><td>${Object.keys(g.metrics).length}</td><td><button class="btn bad small remove-report" data-id="${esc(g.id)}">Remove</button></td></tr>`).join("")}</tbody></table></div><div class="callout" style="margin-top:9px"><b>Seed semantics:</b> aggregate mode uses only runs marked included by the source report. Excluded runs remain visible in individual/specific-seed modes. Mean values are accompanied by sample SD when at least two included seeds are available; one seed never implies SD=0.</div>`;
+registry.querySelectorAll(".edit-method").forEach(x=>x.onchange=()=>{const g=state.groups.find(z=>z.id===x.dataset.id);if(g){g.method=slug(x.value)||g.method;(g.seedRuns||[]).forEach(r=>r.method=g.method);rebuildReports();refreshAll()}});
+registry.querySelectorAll(".edit-dataset").forEach(x=>x.onchange=()=>{const g=state.groups.find(z=>z.id===x.dataset.id);if(g){g.dataset=slug(x.value)||g.dataset;(g.seedRuns||[]).forEach(r=>r.dataset=g.dataset);rebuildReports();refreshAll()}});
+registry.querySelectorAll(".remove-report").forEach(x=>x.onclick=()=>{state.groups=state.groups.filter(z=>z.id!==x.dataset.id);rebuildReports();refreshAll()});
+}
+function renderMethodsTab(){
+const dsSel=document.getElementById("mDataset"), famSel=document.getElementById("mFamily"), metSel=document.getElementById("mMetric");
+populateSelect(dsSel,datasets(),dsSel.value);
+if(!dsSel.value){document.getElementById("methodTable").innerHTML=emptyHTML();return}
+const reps=reportsForDataset(dsSel.value);
+const fams=familiesFor(reps);
+populateSelect(famSel,fams.map(x=>({value:x,label:FAMILY_LABELS[x]||x})),famSel.value||"scIB aggregate");
+const defs=metricDefsByFamily(reps,famSel.value);
+populateMetricSelect(metSel,defs,metSel.value||defs.find(d=>d.key==="scIB aggregate::Total")?.key);
+const missing=methods().filter(m=>!reps.some(r=>r.method===m));
+document.getElementById("methodCards").innerHTML=
+cardHTML("Dataset",dsSel.value,`${reps[0]?.meta.n_cells??"?"} cells · ${reps[0]?.meta.n_batches??"?"} batches`)+
+cardHTML("Available methods",reps.length,reps.map(r=>r.method).join(", "))+
+cardHTML("Missing methods",missing.length,missing.length?missing.join(", "):"None among imported methods")+
+cardHTML("Metrics in family",defs.length,FAMILY_LABELS[famSel.value]||famSel.value);
+renderMatrixCompa
