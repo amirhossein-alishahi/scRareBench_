@@ -13,17 +13,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .tmp/interactive_docs/part* | base64 -d > /tmp/payload.bin
-          echo "size=$(stat -c%s /tmp/payload.bin)"
-          sha256sum /tmp/payload.bin
-          file /tmp/payload.bin
-          python - <<'PY'
+          cat .tmp/interactive_docs/part* | base64 -d > /tmp/payload.xz
+          echo "compressed_size=$(stat -c%s /tmp/payload.xz)"
+          sha256sum /tmp/payload.xz
+          xz -dc /tmp/payload.xz > /tmp/payload.raw
+          echo "raw_size=$(stat -c%s /tmp/payload.raw)"
+          sha256sum /tmp/payload.raw
+          file /tmp/payload.raw
+          if tar -tf /tmp/payload.raw >/dev/null 2>&1; then
+            tar -tvf /tmp/payload.raw
+          else
+            python - <<'PY'
           from pathlib import Path
-          import zipfile
-          p=Path('/tmp/payload.bin')
-          if zipfile.is_zipfile(p):
-              with zipfile.ZipFile(p) as z:
-                  for i in z.infolist(): print(i.filename, i.file_size)
-          else:
-              print(p.read_bytes()[:80])
+          p=Path('/tmp/payload.raw')
+          print(p.read_bytes()[:200])
           PY
+          fi
