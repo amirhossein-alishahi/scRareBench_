@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>scRareBench Multi-Report Comparator</title>
+<style>
+:root{
+--bg:#f4f7fb;--panel:#fff;--ink:#172033;--muted:#64748b;--line:#dce3ee;
+--accent:#3157d5;--accent2:#6d4aff;--good:#079669;--warn:#d97706;--bad:#dc2626;
+--soft:#f7f9fe;--shadow:0 10px 28px rgba(31,55,93,.07);--focus:0 0 0 3px rgba(49,87,213,.18)
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select{font:inherit}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:var(--focus)}
+header{background:linear-gradient(120deg,#13264f,#314db6 58%,#6846c7);color:#fff;padding:26px 28px 22px}
+.head{max-width:1700px;margin:auto}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;opacity:.75}
+.head h1{margin:5px 0 7px;font-size:1.9rem}.head p{margin:0;opacity:.88;max-width:1120px;line-height:1.5}
+.shell{max-width:1700px;margin:auto;padding:18px}
+.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.btn{border:0;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer;background:var(--accent);color:white}
+.btn:hover{filter:brightness(.97)}.btn.secondary{background:#e9eef8;color:#31405e}.btn.ghost{background:white;color:#42526a;border:1px solid var(--line)}
+.btn.bad{background:#fff1f2;color:#a72d42;border:1px solid #f4c7cf}.btn.small{padding:6px 9px;font-size:.78rem}
+.png-export-btn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;color:#31405e;border:1px solid var(--line);box-shadow:0 1px 2px rgba(31,55,93,.04)}
+.png-export-btn:hover{background:#f4f7ff;border-color:#aebde0;filter:none}.png-export-btn:disabled{opacity:.5;cursor:not-allowed}
+.png-export-btn .png-icon{font-size:.92rem;line-height:1}.plot-title-group{display:flex;align-items:center;gap:10px;min-width:0}.plot-title-group small{white-space:normal}
+.status{color:var(--muted);font-size:.84rem}.spacer{flex:1}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:15px;padding:7px;position:sticky;top:8px;z-index:40;box-shadow:var(--shadow)}
+.tab-btn{border:0;background:transparent;color:#42526a;padding:10px 13px;border-radius:10px;font-weight:700;cursor:pointer}
+.tab-btn:hover{background:#f1f4fb}.tab-btn.active{background:#e9eeff;color:#263fa7}
+.tab{display:none;padding-top:16px}.tab.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:11px;margin-bottom:14px}
+.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow)}
+.card{padding:14px 15px}.card .k{font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.card .v{font-size:1.33rem;font-weight:780;margin-top:4px;overflow-wrap:anywhere}.card .s{font-size:.78rem;color:var(--muted);margin-top:3px;line-height:1.4}
+.panel{margin-bottom:14px;overflow:hidden}.panel-title{padding:13px 16px;border-bottom:1px solid var(--line);font-weight:760;display:flex;gap:10px;justify-content:space-between;align-items:center}
+.panel-title small{font-weight:400;color:var(--muted)}.panel-body{padding:15px}
+.grid2{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:14px;align-items:start}
+.grid-half{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.controls{display:flex;flex-direction:column;gap:11px}.control-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px}
+label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px}
+select,input[type=text],input[type=search],input[type=number]{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+input.inline-edit{padding:5px 7px;min-width:115px}
+.plot{min-height:520px;width:100%}.plot.small{min-height:390px}
+.note,.callout{font-size:.82rem;line-height:1.5;color:var(--muted)}.callout{background:var(--soft);border:1px dashed #c8d3e8;padding:10px;border-radius:10px}
+.warn{background:#fff9ee;border-color:#efd29b;color:#72501d}.good{background:#effaf6;border-color:#bfe7d8;color:#17624d}
+.table-wrap{overflow:auto;max-height:650px;border:1px solid var(--line);border-radius:10px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.79rem}th,td{padding:8px 9px;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:#f7f9fc;z-index:2;color:#45536b}tr:hover td{background:#f8faff}
+.missing{color:#a1a9b6;background:#fbfcfd}.score-good{font-weight:750;color:#087b5a}.score-bad{color:#ae3247}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#3949a5;font-size:.72rem;margin:1px}
+.badge.warn{background:#fff1e8;color:#a14c18;border:0}.badge.good{background:#eaf8f2;color:#087b5a;border:0}
+.import-drop{border:2px dashed #bdc9df;border-radius:14px;padding:25px;text-align:center;background:#fbfcff;cursor:pointer;transition:.15s}
+.import-drop:hover,.import-drop.drag{border-color:#7189df;background:#f5f7ff}
+.import-drop b{display:block;margin-bottom:5px}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px}.insight{border:1px solid #e4e9f2;border-radius:10px;padding:10px;background:#fff}
+.insight b{display:block;margin-bottom:4px}.insight span{font-size:.8rem;color:var(--muted);line-height:1.4}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed #cbd5e1;border-radius:11px;background:#fbfcfe}
+.section-note{margin:0 0 12px;color:var(--muted);font-size:.84rem;line-height:1.5}
+.checkbox-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.checkbox-row label{display:flex;gap:5px;align-items:center;margin:0}
+.file-error{color:#a72d42;font-size:.76rem;white-space:normal;max-width:420px}
+@media(max-width:900px){.grid2,.grid-half{grid-template-columns:1fr}.plot{min-height:430px}.shell{padding:10px}header{padding:22px 16px}}
+</style>
+</head>
+<body>
+<header><div class="head">
+<div class="eyebrow">
