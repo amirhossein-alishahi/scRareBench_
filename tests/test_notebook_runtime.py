@@ -13,6 +13,11 @@ import pytest
 
 ROOT = Path(__file__).parents[1]
 NOTEBOOK_DIR = ROOT / "notebooks"
+ADVANCED_NOTEBOOK_DIR = NOTEBOOK_DIR / "advanced_configs"
+FEATURED_NOTEBOOK_NAMES = {
+    "scRareBench_Seurat_HighLevel_Dataset0_Colab.ipynb",
+    "scRareBench_scVI_HighLevel_Dataset0_Colab.ipynb",
+}
 RELEASE_NOTEBOOK_NAMES = {
     "scRareBench_Harmony_Colab.ipynb",
     "scRareBench_Harmony_Dataset2_mBDRC_Colab.ipynb",
@@ -27,14 +32,15 @@ DEVELOPER_NOTEBOOK_NAMES = {
     "scRareBench_scVI_HighLevel_Dataset0_Colab.ipynb",
     "scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb",
 }
-SCVI_HIGHLEVEL_NOTEBOOK_NAMES = {
-    "scRareBench_scVI_HighLevel_Dataset0_Colab.ipynb",
-    "scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb",
-}
-NOTEBOOKS = tuple(sorted(NOTEBOOK_DIR.glob("*.ipynb")))
-RELEASE_NOTEBOOKS = tuple(NOTEBOOK_DIR / name for name in sorted(RELEASE_NOTEBOOK_NAMES))
-DEVELOPER_NOTEBOOKS = tuple(NOTEBOOK_DIR / name for name in sorted(DEVELOPER_NOTEBOOK_NAMES))
-SCVI_HIGHLEVEL_NOTEBOOKS = tuple(NOTEBOOK_DIR / name for name in sorted(SCVI_HIGHLEVEL_NOTEBOOK_NAMES))
+FEATURED_NOTEBOOKS = tuple(sorted(NOTEBOOK_DIR.glob("*.ipynb")))
+ADVANCED_NOTEBOOKS = tuple(sorted(ADVANCED_NOTEBOOK_DIR.glob("*.ipynb")))
+NOTEBOOKS = FEATURED_NOTEBOOKS + ADVANCED_NOTEBOOKS
+RELEASE_NOTEBOOKS = tuple(ADVANCED_NOTEBOOK_DIR / name for name in sorted(RELEASE_NOTEBOOK_NAMES))
+DEVELOPER_NOTEBOOKS = tuple(ADVANCED_NOTEBOOK_DIR / name for name in sorted(DEVELOPER_NOTEBOOK_NAMES))
+SCVI_HIGHLEVEL_NOTEBOOKS = (
+    NOTEBOOK_DIR / "scRareBench_scVI_HighLevel_Dataset0_Colab.ipynb",
+    ADVANCED_NOTEBOOK_DIR / "scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb",
+)
 PERSIAN_RE = re.compile(r"[\u0600-\u06FF]")
 
 
@@ -182,7 +188,8 @@ def test_lightweight_runtime_import_works_before_scientific_imports():
 
 
 def test_notebook_set_is_explicit_english_and_compilable():
-    assert {p.name for p in NOTEBOOKS} == RELEASE_NOTEBOOK_NAMES | DEVELOPER_NOTEBOOK_NAMES
+    assert {p.name for p in FEATURED_NOTEBOOKS} == FEATURED_NOTEBOOK_NAMES
+    assert {p.name for p in ADVANCED_NOTEBOOKS} == RELEASE_NOTEBOOK_NAMES | DEVELOPER_NOTEBOOK_NAMES
     for path in NOTEBOOKS:
         assert "FIXED" not in path.name.upper()
         assert not re.search(r"_v\d", path.name, flags=re.IGNORECASE)
@@ -224,11 +231,11 @@ def test_developer_notebooks_use_integrated_main_and_remain_method_agnostic():
         assert "scrarebench.methods" not in code
         assert "setup_runtime(" in code
 
-    generic = _notebook_code(NOTEBOOK_DIR / "scRareBench_CustomMethod_HighLevel_Colab.ipynb")
+    generic = _notebook_code(ADVANCED_NOTEBOOK_DIR / "scRareBench_CustomMethod_HighLevel_Colab.ipynb")
     for token in ("MethodSpec", "MethodOutput", "benchmark_method", "METHOD_DEPENDENCIES", "runner=run_user_method"):
         assert token in generic
 
-    low_level = _notebook_code(NOTEBOOK_DIR / "scRareBench_MultiSeed_LowLevel_Template_Colab.ipynb")
+    low_level = _notebook_code(ADVANCED_NOTEBOOK_DIR / "scRareBench_MultiSeed_LowLevel_Template_Colab.ipynb")
     assert "METHOD_SEEDS" in low_level
     assert "BENCHMARK_SEED" in low_level
     assert "benchmark_latent(" in low_level
@@ -248,9 +255,9 @@ def test_highlevel_scvi_notebooks_keep_method_implementation_user_side():
 
 def test_dataset2_reference_notebooks_use_registered_package_scenarios():
     paths = [
-        NOTEBOOK_DIR / "scRareBench_Harmony_Dataset2_mBDRC_Colab.ipynb",
-        NOTEBOOK_DIR / "scRareBench_MrVI_Dataset2_mBDRC_Colab.ipynb",
-        NOTEBOOK_DIR / "scRareBench_scVI_Dataset2_mBDRC_Colab.ipynb",
+        ADVANCED_NOTEBOOK_DIR / "scRareBench_Harmony_Dataset2_mBDRC_Colab.ipynb",
+        ADVANCED_NOTEBOOK_DIR / "scRareBench_MrVI_Dataset2_mBDRC_Colab.ipynb",
+        ADVANCED_NOTEBOOK_DIR / "scRareBench_scVI_Dataset2_mBDRC_Colab.ipynb",
     ]
     for path in paths:
         code = _notebook_code(path)
