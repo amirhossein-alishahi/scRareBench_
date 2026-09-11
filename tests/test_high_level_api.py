@@ -112,11 +112,12 @@ def test_public_api_remains_method_agnostic():
     assert not (ROOT/'src/scrarebench/methods').exists()
 
 def test_high_level_and_low_level_templates_compile_and_keep_method_user_side():
+    advanced = ROOT/'notebooks/advanced_configs'
     paths=[
         ROOT/'notebooks/scRareBench_scVI_HighLevel_Dataset0_Colab.ipynb',
-        ROOT/'notebooks/scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb',
-        ROOT/'notebooks/scRareBench_CustomMethod_HighLevel_Colab.ipynb',
-        ROOT/'notebooks/scRareBench_MultiSeed_LowLevel_Template_Colab.ipynb',
+        advanced/'scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb',
+        advanced/'scRareBench_CustomMethod_HighLevel_Colab.ipynb',
+        advanced/'scRareBench_MultiSeed_LowLevel_Template_Colab.ipynb',
     ]
     for path in paths:
         nb=json.loads(path.read_text(encoding='utf-8')); code_text=[]
@@ -125,5 +126,5 @@ def test_high_level_and_low_level_templates_compile_and_keep_method_user_side():
                 source=''.join(cell.get('source',[])); ast.parse(source,filename=f'{path}:{i}'); code_text.append(source)
         joined='\n'.join(code_text)
         assert 'scrarebench.methods' not in joined
-    high=(ROOT/'notebooks/scRareBench_CustomMethod_HighLevel_Colab.ipynb').read_text(encoding='utf-8')
+    high=(advanced/'scRareBench_CustomMethod_HighLevel_Colab.ipynb').read_text(encoding='utf-8')
     assert 'MethodSpec' in high and 'benchmark_method' in high and 'METHOD_DEPENDENCIES' in high
