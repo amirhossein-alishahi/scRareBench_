@@ -42,7 +42,7 @@ def test_declared_missing_count_layer_fails_closed_for_scib(tmp_path):
 
 
 def test_dataset2_high_level_notebook_uses_validated_count_and_global_hvg_contract():
-    path = Path("notebooks/scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb")
+    path = Path("notebooks/advanced_configs/scRareBench_scVI_HighLevel_Dataset2_mBDRC_Colab.ipynb")
     nb = json.loads(path.read_text(encoding="utf-8"))
     code_cells = ["".join(c.get("source", [])) for c in nb["cells"] if c.get("cell_type") == "code"]
     code = "\n".join(code_cells)
