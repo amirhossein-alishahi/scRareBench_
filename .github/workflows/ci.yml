@@ -27,7 +27,9 @@ jobs:
         run: python -m compileall -q src tests scripts examples
       - name: Validate release notebooks
         run: python scripts/check_notebooks.py
-      - name: Run tests
+      - name: Dataset 0-5 pipeline regression
+        run: python -m pytest tests/test_dataset_preparation_v0107.py tests/test_builtin_pipeline_v0107.py
+      - name: Run full test suite
         run: python -m pytest
       - name: Build wheel and sdist
         run: python -m build
@@ -40,6 +42,8 @@ jobs:
               names = set(z.namelist())
           assert 'scrarebench/config/default_failure_rules.yaml' in names
           assert any(n.endswith('paper_scenarios.csv') for n in names)
+          assert 'scrarebench/config/registered_scenarios_nygc_seurat_v4_pbmc.csv' in names
+          assert 'scrarebench/datasets/preparation.py' in names
           assert 'scrarebench/runtime.py' in names
           assert 'scrarebench/benchmark.py' in names
           assert not any('/methods/' in n for n in names)
