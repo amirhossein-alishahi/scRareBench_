@@ -519,6 +519,14 @@ def load_dataset(
     from .gse194122 import _require_anndata
 
     ad = _require_anndata()
+    if spec.key in {
+        "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc", "nygc_seurat_v4_pbmc",
+    } and backed is not None:
+        raise ValueError(
+            f"load_dataset({spec.index}) benchmark preparation requires backed=None; "
+            "datasets 3--5 must be materialized in memory to validate/canonicalize "
+            "counts and, for Dataset 5, apply the fixed source-cell QC filter."
+        )
     adata = ad.read_h5ad(path, backed=backed)
 
     # Datasets 3--5 require audited in-memory benchmark preparation. Their
@@ -526,12 +534,6 @@ def load_dataset(
     if spec.key in {
         "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc", "nygc_seurat_v4_pbmc",
     }:
-        if backed is not None:
-            raise ValueError(
-                f"load_dataset({spec.index}) benchmark preparation requires backed=None; "
-                "datasets 3--5 must be materialized in memory to validate/canonicalize "
-                "counts and, for Dataset 5, apply the fixed source-cell QC filter."
-            )
         from .preparation import prepare_external_benchmark_dataset
         adata = prepare_external_benchmark_dataset(adata, dataset_key=spec.key)
 
