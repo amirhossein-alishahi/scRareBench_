@@ -52,6 +52,15 @@ REGISTERED_SCENARIO_TABLES: dict[str, dict[str, str]] = {
             "Disease/group confounding noted in the benchmark report must be preserved in interpretation."
         ),
     },
+    "nygc_seurat_v4_pbmc": {
+        "resource": "registered_scenarios_nygc_seurat_v4_pbmc.csv",
+        "label_key": "celltype.l2",
+        "status": "provisional_annotation_driven",
+        "description": (
+            "Provisional DL/RM assignments derived from the audited rare-cell report "
+            "after the official scvi-tools PBMC QC filter."
+        ),
+    },
 }
 
 
