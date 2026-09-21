@@ -28,6 +28,7 @@ def test_registered_scenario_counts_and_coverage():
         "mbdrc_renal_cortex": (10, {"GR-DL", "GR-RM", "LE-DL", "LE-RM"}),
         "wu_breast_cancer_atlas": (17, set(SIX_SCENARIOS)),
         "covid19_autoimmunity_pbmc": (12, {"GR-DL", "GR-RM", "LE-DL", "SR-DL"}),
+        "nygc_seurat_v4_pbmc": (9, {"GR-DL", "GR-RM", "SR-DL", "SR-RM"}),
     }
     for key, (n_rows, coverage) in expected.items():
         table = load_registered_scenario_table(key)
