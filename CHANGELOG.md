@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.7 — built-in external dataset contracts
+## Unreleased — built-in external dataset contracts
 
 - Made Datasets 3, 4 and 5 benchmark-ready at load time without changing the tested Dataset 0/1/2 flows.
 - Dataset 3 (Wu breast-cancer atlas): registers `celltype_subset` / `donor_id`, materializes an audited `counts` layer from aligned `raw.X`, and uses global scIB-reference HVG selection after the donor-aware Seurat-v3 LOESS audit failed at span 0.3.
