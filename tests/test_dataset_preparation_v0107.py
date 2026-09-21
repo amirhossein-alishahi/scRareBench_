@@ -266,3 +266,67 @@ def test_dataset4_label_revision_and_dataset5_scenarios_are_registered():
     info = registered_scenario_info("nygc_seurat_v4_pbmc")
     assert info["n_six_state_rows"] == 9
     assert info["missing_scenarios"] == ["LE-DL", "LE-RM"]
+
+
+def test_loader_preparation_dispatch_is_isolated_to_datasets_3_4_5(tmp_path, monkeypatch):
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import scrarebench.datasets.gse194122 as gse
+    import scrarebench.datasets.registry as registry
+    import scrarebench.scenarios as scenarios
+
+    def make(selector: int) -> ad.AnnData:
+        x = np.ones((6, 4), dtype=float)
+        obs = pd.DataFrame(index=[f"c{i}" for i in range(6)])
+        if selector == 1:
+            obs["celltype"] = ["A", "A", "B", "B", "C", "C"]
+            obs["BATCH"] = ["b1", "b2", "b1", "b2", "b1", "b2"]
+        elif selector == 2:
+            obs["cell_type"] = ["A", "A", "B", "B", "C", "C"]
+            obs["donor_id"] = ["d1", "d2", "d1", "d2", "d1", "d2"]
+            obs["assay"] = ["rna", "rna", "cite", "cite", "rna", "cite"]
+        elif selector == 3:
+            obs["celltype_subset"] = ["A", "A", "B", "B", "C", "C"]
+            obs["donor_id"] = ["d1", "d2", "d1", "d2", "d1", "d2"]
+        elif selector == 4:
+            obs["cell_type"] = ["A", "A", "B", "B", "C", "C"]
+            obs["donor_id"] = ["d1", "d2", "d1", "d2", "d1", "d2"]
+        elif selector == 5:
+            obs["celltype.l2"] = ["A", "A", "B", "B", "C", "C"]
+            obs["orig.ident"] = ["s1", "s2", "s1", "s2", "s1", "s2"]
+        return ad.AnnData(X=x, obs=obs, var=pd.DataFrame(index=[f"g{i}" for i in range(4)]))
+
+    monkeypatch.setattr(
+        registry,
+        "download_dataset",
+        lambda selector, *args, **kwargs: Path(str(selector)),
+    )
+    monkeypatch.setattr(
+        gse,
+        "_require_anndata",
+        lambda: SimpleNamespace(
+            read_h5ad=lambda path, backed=None: make(int(Path(path).name))
+        ),
+    )
+    monkeypatch.setattr(
+        scenarios,
+        "annotate_registered_scenarios",
+        lambda adata, **kwargs: adata,
+    )
+
+    prepared = []
+    monkeypatch.setattr(
+        prep,
+        "prepare_external_benchmark_dataset",
+        lambda adata, *, dataset_key: prepared.append(dataset_key) or adata,
+    )
+
+    for selector in (1, 2, 3, 4, 5):
+        registry.load_dataset(selector, data_dir=tmp_path)
+
+    assert prepared == [
+        "wu_breast_cancer_atlas",
+        "covid19_autoimmunity_pbmc",
+        "nygc_seurat_v4_pbmc",
+    ]
