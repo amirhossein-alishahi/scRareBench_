@@ -36,12 +36,17 @@ BUILTIN_BENCHMARK_PROFILES: dict[str, BenchmarkDatasetProfile] = {
         "mbdrc_renal_cortex", "cell_type", "scrarebench_batch", scib_hvg_batch_mode="global",
         batch_components=("donor_id", "assay"), benchmark_ready=True,
         note="Evaluation batch is donor_id × assay."),
-    "wu_breast_cancer_atlas": BenchmarkDatasetProfile("wu_breast_cancer_atlas", "celltype_subset", None,
-        benchmark_ready=False, note="Register/choose the biological batch before benchmarking."),
-    "covid19_autoimmunity_pbmc": BenchmarkDatasetProfile("covid19_autoimmunity_pbmc", "cell_type", None,
-        benchmark_ready=False, note="Register/choose the biological batch before benchmarking."),
-    "nygc_seurat_v4_pbmc": BenchmarkDatasetProfile("nygc_seurat_v4_pbmc", None, None,
-        benchmark_ready=False, note="Register label and batch fields before benchmarking."),
+    "wu_breast_cancer_atlas": BenchmarkDatasetProfile(
+        "wu_breast_cancer_atlas", "celltype_subset", "donor_id",
+        scib_hvg_batch_mode="global", benchmark_ready=True,
+        note="Evaluation/integration batch is donor_id; canonical counts are aligned from raw.X."),
+    "covid19_autoimmunity_pbmc": BenchmarkDatasetProfile(
+        "covid19_autoimmunity_pbmc", "cell_type", "donor_id", benchmark_ready=True,
+        note="Evaluation/integration batch is donor_id; canonical counts are aligned from raw.X."),
+    "nygc_seurat_v4_pbmc": BenchmarkDatasetProfile(
+        "nygc_seurat_v4_pbmc", "celltype.l2", "orig.ident", count_layer=None,
+        benchmark_ready=True,
+        note="Official scvi-tools PBMC QC is applied in memory; canonical RNA counts remain in X."),
 }
 
 
