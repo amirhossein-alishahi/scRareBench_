@@ -22,7 +22,8 @@ DL/RM assignments are annotation-driven and should not be inferred automatically
 
 - **mBDRC renal cortex**: 10 assigned populations covering `GR-DL`, `GR-RM`, `LE-DL`, and `LE-RM`; one additional topology-ambiguous population is retained as provenance.
 - **Wu breast-cancer atlas**: 17 assigned populations covering all six scenarios.
-- **COVID-19 autoimmunity PBMC**: 12 assigned populations covering `GR-DL`, `GR-RM`, `LE-DL`, and `SR-DL`.
+- **COVID-19 autoimmunity PBMC**: 12 assigned populations covering `GR-DL`, `GR-RM`, `LE-DL`, and `SR-DL`. The current CELLxGENE source uses `mucosal-associated invariant T cell` for the same audited 223-cell MAIT population previously labeled `mucosal invariant T cell`.
+- **NYGC / Seurat v4 CITE-seq PBMC**: 9 assigned populations after the fixed official PBMC QC, covering `GR-DL`, `GR-RM`, `SR-DL`, and `SR-RM`.
 
 The dashboard preserves all six scenario slots even when a dataset has no registered populations in a given slot.
 
