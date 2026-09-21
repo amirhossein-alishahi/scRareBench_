@@ -166,7 +166,10 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         filename="pbmc_seurat_v4.h5ad",
         source_url=NYGC_SEURAT_V4_URL,
         sha256=NYGC_SEURAT_V4_SHA256,
-        note="Official scverse example-data H5AD; no scRareBench-specific editing is applied.",
+        note=(
+            "Official scverse example-data H5AD is preserved on disk; load_dataset applies "
+            "the audited official scvi-tools PBMC QC filter in memory for benchmarking."
+        ),
     ),
 )
 
@@ -484,9 +487,13 @@ def load_dataset(
     No normalization, log transform, HVG selection, scaling, PCA, neighbors, or
     integration-method preprocessing is performed here.
 
-    For registered benchmark datasets with scenario metadata (currently dataset
-    0 and external datasets 2--4), six-state annotations are attached in memory
-    only. The downloaded source H5AD remains unchanged.
+    Datasets 3--5 receive only their audited dataset-level benchmark preparation
+    in memory: Dataset 3/4 canonical raw-count layers, and Dataset 5 the official
+    scvi-tools PBMC source-cell QC filter. These are dataset contracts, not
+    integration-method preprocessing. Downloaded source H5AD files remain unchanged.
+
+    For registered benchmark datasets with scenario metadata (dataset 0 and
+    external datasets 2--5), six-state annotations are attached in memory only.
     """
     spec = resolve_dataset(selector)
     if data_dir is None:
@@ -514,10 +521,27 @@ def load_dataset(
     ad = _require_anndata()
     adata = ad.read_h5ad(path, backed=backed)
 
-    # External datasets are kept byte-for-byte as published on disk. Scenario
-    # metadata is attached only to the in-memory AnnData returned by load_dataset.
+    # Datasets 3--5 require audited in-memory benchmark preparation. Their
+    # published/downloaded H5AD files stay byte-for-byte unchanged.
     if spec.key in {
-        "mbdrc_renal_cortex", "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc",
+        "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc", "nygc_seurat_v4_pbmc",
+    }:
+        if backed is not None:
+            raise ValueError(
+                f"load_dataset({spec.index}) benchmark preparation requires backed=None; "
+                "datasets 3--5 must be materialized in memory to validate/canonicalize "
+                "counts and, for Dataset 5, apply the fixed source-cell QC filter."
+            )
+        from .preparation import prepare_external_benchmark_dataset
+        adata = prepare_external_benchmark_dataset(adata, dataset_key=spec.key)
+
+    # Scenario metadata is attached only to the in-memory AnnData returned by
+    # load_dataset. Dataset 2 follows its historical path unchanged.
+    if spec.key in {
+        "mbdrc_renal_cortex",
+        "wu_breast_cancer_atlas",
+        "covid19_autoimmunity_pbmc",
+        "nygc_seurat_v4_pbmc",
     }:
         from ..scenarios import annotate_registered_scenarios
         annotate_registered_scenarios(adata, dataset_key=spec.key, inplace=True, strict_labels=True)
