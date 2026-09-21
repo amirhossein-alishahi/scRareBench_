@@ -117,30 +117,87 @@ def _validate_obs_contract(
         )
 
 
-def _sample_count_diagnostics(matrix: Any, *, max_values: int = 100_000) -> dict[str, Any]:
-    values = matrix.data if sparse.issparse(matrix) else np.asarray(matrix).reshape(-1)
-    if len(values) > max_values:
-        positions = np.linspace(0, len(values) - 1, num=max_values, dtype=np.int64)
-        values = values[positions]
-    values = np.asarray(values, dtype=float)
-    finite = values[np.isfinite(values)]
+def _full_count_diagnostics(matrix: Any, *, row_chunk: int = 4096) -> dict[str, Any]:
+    """Validate the complete matrix without densifying the full dataset."""
+    n_obs, n_vars = matrix.shape
+    library = np.empty(int(n_obs), dtype=np.float64)
+    finite = True
+    nonnegative = True
+    integer_like = True
+    observed_min = np.inf
+    observed_max = -np.inf
+    sparse_seen = False
+    implicit_zero_seen = False
+
+    for start in range(0, int(n_obs), row_chunk):
+        end = min(int(n_obs), start + row_chunk)
+        chunk = matrix[start:end, :]
+        if hasattr(chunk, "to_memory"):
+            chunk = chunk.to_memory()
+
+        if sparse.issparse(chunk):
+            sparse_seen = True
+            values = np.asarray(chunk.data)
+            implicit_zero_seen = (
+                implicit_zero_seen
+                or int(chunk.nnz) < int(chunk.shape[0] * chunk.shape[1])
+            )
+            row_sum = np.asarray(chunk.sum(axis=1)).reshape(-1)
+        else:
+            array = np.asarray(chunk)
+            values = array.reshape(-1)
+            row_sum = np.asarray(array.sum(axis=1)).reshape(-1)
+
+        library[start:end] = row_sum
+        if values.size:
+            if not np.isfinite(values).all():
+                finite = False
+            finite_values = values[np.isfinite(values)]
+            if finite_values.size:
+                observed_min = min(observed_min, float(finite_values.min()))
+                observed_max = max(observed_max, float(finite_values.max()))
+                if np.any(finite_values < 0):
+                    nonnegative = False
+                if not np.allclose(
+                    finite_values, np.rint(finite_values), atol=1e-6, rtol=0.0
+                ):
+                    integer_like = False
+
+    if not np.isfinite(library).all():
+        finite = False
+    if implicit_zero_seen:
+        observed_min = min(observed_min, 0.0)
+
     return {
-        "finite": bool(len(finite) == len(values)),
-        "nonnegative": bool(len(finite) == 0 or finite.min() >= 0),
-        "integer_like": bool(
-            len(finite) == 0
-            or np.allclose(finite, np.rint(finite), atol=1e-6, rtol=0.0)
-        ),
+        "shape": [int(n_obs), int(n_vars)],
+        "sparse": bool(sparse_seen),
+        "finite": bool(finite),
+        "nonnegative": bool(nonnegative),
+        "integer_like": bool(integer_like),
+        "minimum": float(observed_min) if np.isfinite(observed_min) else 0.0,
+        "maximum": float(observed_max) if np.isfinite(observed_max) else 0.0,
+        "zero_or_negative_library_cells": int(np.count_nonzero(library <= 0)),
+        "library_min": float(np.min(library)),
+        "library_median": float(np.median(library)),
+        "library_max": float(np.max(library)),
     }
 
 
-def _require_count_like(matrix: Any, *, dataset_key: str, source: str) -> None:
-    diag = _sample_count_diagnostics(matrix)
-    if not (diag["finite"] and diag["nonnegative"] and diag["integer_like"]):
+def _require_count_like(
+    matrix: Any, *, dataset_key: str, source: str
+) -> dict[str, Any]:
+    diag = _full_count_diagnostics(matrix)
+    if not (
+        diag["finite"]
+        and diag["nonnegative"]
+        and diag["integer_like"]
+        and diag["zero_or_negative_library_cells"] == 0
+    ):
         raise DatasetValidationError(
             f"Dataset {dataset_key!r} canonical count source {source!r} "
-            f"failed count diagnostics: {diag}"
+            f"failed full count diagnostics: {diag}"
         )
+    return diag
 
 
 def _aligned_raw_counts(adata: Any, *, dataset_key: str):
@@ -156,25 +213,27 @@ def _aligned_raw_counts(adata: Any, *, dataset_key: str):
             f"Dataset {dataset_key!r} raw.var_names are not unique."
         )
 
-    positions = raw_names.get_indexer(current_names)
-    missing = int(np.count_nonzero(positions < 0))
-    if missing:
-        raise DatasetValidationError(
-            f"Dataset {dataset_key!r} has {missing} current features absent from adata.raw."
-        )
-
-    counts = adata.raw.X[:, positions]
+    if len(raw_names) == len(current_names) and raw_names.equals(current_names):
+        counts = adata.raw.X
+    else:
+        positions = raw_names.get_indexer(current_names)
+        missing = int(np.count_nonzero(positions < 0))
+        if missing:
+            raise DatasetValidationError(
+                f"Dataset {dataset_key!r} has {missing} current features absent from adata.raw."
+            )
+        counts = adata.raw.X[:, positions]
     if counts.shape != adata.shape:
         raise DatasetValidationError(
             f"Dataset {dataset_key!r} aligned raw counts have shape {counts.shape}, "
             f"expected {adata.shape}."
         )
-    _require_count_like(
+    diagnostics = _require_count_like(
         counts,
         dataset_key=dataset_key,
         source="adata.raw.X aligned to adata.var_names",
     )
-    return counts
+    return counts, diagnostics
 
 
 def _prepare_raw_aligned_dataset(adata: Any, *, dataset_key: str) -> Any:
@@ -188,7 +247,7 @@ def _prepare_raw_aligned_dataset(adata: Any, *, dataset_key: str) -> Any:
         expected_labels=int(contract["n_labels"]),
         expected_batches=int(contract["n_batches"]),
     )
-    counts = _aligned_raw_counts(adata, dataset_key=dataset_key)
+    counts, diagnostics = _aligned_raw_counts(adata, dataset_key=dataset_key)
     adata.layers["counts"] = counts
     adata.uns[_PREPARATION_UNS_KEY] = {
         "dataset_key": dataset_key,
@@ -198,12 +257,15 @@ def _prepare_raw_aligned_dataset(adata: Any, *, dataset_key: str) -> Any:
         "canonical_count_source": "adata.raw.X aligned to adata.var_names",
         "count_layer": "counts",
         "cell_filter": "none",
+        "count_diagnostics": diagnostics,
         "source_contract": "audited_2026_09_21",
     }
     return adata
 
 
-def _pbmc_official_qc_mask(adata: Any) -> tuple[np.ndarray, dict[str, int]]:
+def _pbmc_official_qc_mask(
+    adata: Any, *, row_chunk: int = 4096
+) -> tuple[np.ndarray, dict[str, int]]:
     if "celltype.l2" not in adata.obs.columns:
         raise DatasetValidationError(
             "Dataset 'nygc_seurat_v4_pbmc' requires obs['celltype.l2']."
@@ -231,13 +293,18 @@ def _pbmc_official_qc_mask(adata: Any) -> tuple[np.ndarray, dict[str, int]]:
     protein_log_library[positive_library] = np.log(protein_library[positive_library])
 
     mt_mask = np.asarray(adata.var_names.astype(str).str.startswith("MT-"))
-    total_counts = np.asarray(adata.X.sum(axis=1)).reshape(-1)
-    if mt_mask.any():
-        mitochondrial_counts = np.asarray(
-            adata.X[:, mt_mask].sum(axis=1)
-        ).reshape(-1)
-    else:
-        mitochondrial_counts = np.zeros(adata.n_obs, dtype=float)
+    total_counts = np.empty(adata.n_obs, dtype=np.float64)
+    mitochondrial_counts = np.zeros(adata.n_obs, dtype=np.float64)
+    for start in range(0, adata.n_obs, row_chunk):
+        end = min(adata.n_obs, start + row_chunk)
+        chunk = adata.X[start:end, :]
+        if hasattr(chunk, "to_memory"):
+            chunk = chunk.to_memory()
+        total_counts[start:end] = np.asarray(chunk.sum(axis=1)).reshape(-1)
+        if mt_mask.any():
+            mitochondrial_counts[start:end] = np.asarray(
+                chunk[:, mt_mask].sum(axis=1)
+            ).reshape(-1)
 
     pct_mito = np.divide(
         mitochondrial_counts * 100.0,
@@ -271,7 +338,9 @@ def _pbmc_official_qc_mask(adata: Any) -> tuple[np.ndarray, dict[str, int]]:
 def _prepare_nygc_pbmc(adata: Any) -> Any:
     dataset_key = _DATASET5_KEY
     _validate_source_shape(adata, dataset_key)
-    _require_count_like(adata.X, dataset_key=dataset_key, source="adata.X")
+    source_count_diagnostics = _require_count_like(
+        adata.X, dataset_key=dataset_key, source="adata.X"
+    )
 
     mask, reasons = _pbmc_official_qc_mask(adata)
     filtered = adata[mask, :].copy()
@@ -302,7 +371,9 @@ def _prepare_nygc_pbmc(adata: Any) -> Any:
         expected_labels=int(contract["n_labels"]),
         expected_batches=int(contract["n_batches"]),
     )
-    _require_count_like(filtered.X, dataset_key=dataset_key, source="adata.X after official QC")
+    analysis_count_diagnostics = _require_count_like(
+        filtered.X, dataset_key=dataset_key, source="adata.X after official QC"
+    )
 
     filtered.uns[_PREPARATION_UNS_KEY] = {
         "dataset_key": dataset_key,
@@ -313,6 +384,8 @@ def _prepare_nygc_pbmc(adata: Any) -> Any:
         "count_layer": "",
         "cell_filter": "official_scvi_tools_pbmc_qc",
         "retained_cell_order_sha256": retained_hash,
+        "source_count_diagnostics": source_count_diagnostics,
+        "analysis_count_diagnostics": analysis_count_diagnostics,
         "source_contract": "audited_2026_09_21",
     }
     return filtered
