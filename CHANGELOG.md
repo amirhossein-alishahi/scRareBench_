@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — benchmark-ready external dataset contracts
+
+- Made built-in datasets 3, 4, and 5 load with audited benchmark-ready label, batch, and count contracts.
+- Datasets 3/4 expose validated aligned raw counts in memory; Dataset 5 deterministically applies the audited official scvi-tools PBMC QC while leaving the downloaded H5AD unchanged.
+- Registered Dataset 5's audited nine-population provisional six-state table and updated Dataset 4's MAIT label to the current CELLxGENE ontology name without changing its scenario assignment.
+- Added full-matrix count validation, source/cardinality drift guards, retained-cell identity validation for Dataset 5, and all-selector benchmark-to-interactive-HTML regression coverage.
+- Dataset 0, Dataset 1, and Dataset 2 loader/evaluation contracts are unchanged. Core benchmark, scIB, reporting, dashboard, and multi-seed delivery algorithms are unchanged.
+
 ## 0.10.6 — interactive reporting and comparator release
 
 - Promoted self-contained interactive HTML reports as a first-class public workflow and added `INTERACTIVE_REPORTS.md`.
