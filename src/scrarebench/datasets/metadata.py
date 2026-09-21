@@ -36,12 +36,42 @@ BUILTIN_BENCHMARK_PROFILES: dict[str, BenchmarkDatasetProfile] = {
         "mbdrc_renal_cortex", "cell_type", "scrarebench_batch", scib_hvg_batch_mode="global",
         batch_components=("donor_id", "assay"), benchmark_ready=True,
         note="Evaluation batch is donor_id × assay."),
-    "wu_breast_cancer_atlas": BenchmarkDatasetProfile("wu_breast_cancer_atlas", "celltype_subset", None,
-        benchmark_ready=False, note="Register/choose the biological batch before benchmarking."),
-    "covid19_autoimmunity_pbmc": BenchmarkDatasetProfile("covid19_autoimmunity_pbmc", "cell_type", None,
-        benchmark_ready=False, note="Register/choose the biological batch before benchmarking."),
-    "nygc_seurat_v4_pbmc": BenchmarkDatasetProfile("nygc_seurat_v4_pbmc", None, None,
-        benchmark_ready=False, note="Register label and batch fields before benchmarking."),
+    "wu_breast_cancer_atlas": BenchmarkDatasetProfile(
+        "wu_breast_cancer_atlas", "celltype_subset", "donor_id",
+        scib_hvg_batch_mode="global", benchmark_ready=True,
+        note="Audited benchmark contract: donor_id batch; canonical counts from aligned raw.X."),
+    "covid19_autoimmunity_pbmc": BenchmarkDatasetProfile(
+        "covid19_autoimmunity_pbmc", "cell_type", "donor_id",
+        benchmark_ready=True,
+        note="Audited benchmark contract: donor_id batch; canonical counts from aligned raw.X."),
+    "nygc_seurat_v4_pbmc": BenchmarkDatasetProfile(
+        "nygc_seurat_v4_pbmc", "celltype.l2", "orig.ident", count_layer=None,
+        benchmark_ready=True,
+        note="Audited benchmark contract after official scvi-tools PBMC QC; canonical counts are in X."),
+}
+
+
+# Dataset-specific method-preprocessing policy. This is metadata only: load_dataset
+# never runs HVG selection or any integration-method preprocessing.
+BUILTIN_METHOD_HVG_POLICIES: dict[str, dict[str, Any]] = {
+    "wu_breast_cancer_atlas": {
+        "flavor": "seurat_v3",
+        "n_top_genes": 4000,
+        "batch_mode": "global",
+        "span": 0.3,
+    },
+    "covid19_autoimmunity_pbmc": {
+        "flavor": "seurat_v3",
+        "n_top_genes": 4000,
+        "batch_mode": "evaluation_batch",
+        "span": 0.3,
+    },
+    "nygc_seurat_v4_pbmc": {
+        "flavor": "seurat_v3",
+        "n_top_genes": 4000,
+        "batch_mode": "evaluation_batch",
+        "span": 0.3,
+    },
 }
 
 
@@ -83,6 +113,15 @@ def attach_builtin_dataset_metadata(adata: Any, *, dataset_key: str, dataset_ind
     })
     payload = {k: ("" if v is None else v) for k, v in payload.items()}
     payload["batch_components"] = list(profile.batch_components)
+
+    method_hvg = BUILTIN_METHOD_HVG_POLICIES.get(profile.dataset_key)
+    if method_hvg is not None:
+        payload["method_hvg"] = dict(method_hvg)
+
+    preparation = getattr(adata, "uns", {}).get("scrarebench_preparation")
+    if isinstance(preparation, dict):
+        payload["preparation"] = dict(preparation)
+
     adata.uns[SCRAREBENCH_UNS_KEY] = payload
     return adata
 
@@ -184,5 +223,6 @@ def register_dataset(adata: Any, *, label_key: str, batch_key: str, name: str = 
     return target
 
 
-__all__ = ["BenchmarkDatasetProfile", "BUILTIN_BENCHMARK_PROFILES", "SCRAREBENCH_UNS_KEY",
-           "default_data_dir", "dataset_info", "attach_builtin_dataset_metadata", "register_dataset"]
+__all__ = ["BenchmarkDatasetProfile", "BUILTIN_BENCHMARK_PROFILES", "BUILTIN_METHOD_HVG_POLICIES",
+           "SCRAREBENCH_UNS_KEY", "default_data_dir", "dataset_info",
+           "attach_builtin_dataset_metadata", "register_dataset"]

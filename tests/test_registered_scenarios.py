@@ -28,6 +28,7 @@ def test_registered_scenario_counts_and_coverage():
         "mbdrc_renal_cortex": (10, {"GR-DL", "GR-RM", "LE-DL", "LE-RM"}),
         "wu_breast_cancer_atlas": (17, set(SIX_SCENARIOS)),
         "covid19_autoimmunity_pbmc": (12, {"GR-DL", "GR-RM", "LE-DL", "SR-DL"}),
+        "nygc_seurat_v4_pbmc": (9, {"GR-DL", "GR-RM", "SR-DL", "SR-RM"}),
     }
     for key, (n_rows, coverage) in expected.items():
         table = load_registered_scenario_table(key)
@@ -45,6 +46,40 @@ def test_mbdrc_tracks_ambiguous_lymphocyte_without_forcing_topology():
     assert not bool(row["include_in_six_state"])
     info = registered_scenario_info("mbdrc_renal_cortex")
     assert info["unassigned_cell_types"] == ["lymphocyte"]
+
+
+def test_dataset4_registered_mait_label_matches_current_cellxgene_source():
+    table = load_registered_scenario_table(
+        "covid19_autoimmunity_pbmc",
+        include_unassigned=True,
+    )
+    labels = set(table["cell_type"].astype(str))
+    assert "mucosal-associated invariant T cell" in labels
+    assert "mucosal invariant T cell" not in labels
+
+
+def test_dataset5_registered_scenarios_match_audited_qc_labels():
+    table = load_registered_scenario_table(
+        "nygc_seurat_v4_pbmc",
+        include_unassigned=True,
+    )
+    assert set(table["cell_type"].astype(str)) == {
+        "CD4 Proliferating",
+        "CD8 Proliferating",
+        "ILC",
+        "NK Proliferating",
+        "NK_CD56bright",
+        "Plasmablast",
+        "cDC1",
+        "dnT",
+        "pDC",
+    }
+    assert set(table["scenario"].astype(str)) == {
+        "GR-DL",
+        "GR-RM",
+        "SR-DL",
+        "SR-RM",
+    }
 
 
 def test_annotation_embeds_dataset_specific_six_state_table():
