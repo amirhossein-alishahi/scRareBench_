@@ -23,6 +23,7 @@ DL/RM assignments are annotation-driven and should not be inferred automatically
 - **mBDRC renal cortex**: 10 assigned populations covering `GR-DL`, `GR-RM`, `LE-DL`, and `LE-RM`; one additional topology-ambiguous population is retained as provenance.
 - **Wu breast-cancer atlas**: 17 assigned populations covering all six scenarios.
 - **COVID-19 autoimmunity PBMC**: 12 assigned populations covering `GR-DL`, `GR-RM`, `LE-DL`, and `SR-DL`.
+- **NYGC / Seurat v4 CITE-seq PBMC**: 9 assigned populations covering `GR-DL`, `GR-RM`, `SR-DL`, and `SR-RM` after the fixed official scvi-tools PBMC QC filter.
 
 The dashboard preserves all six scenario slots even when a dataset has no registered populations in a given slot.
 
