@@ -125,7 +125,8 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         ),
         preferred_title="breast",
         note=("Published CELLxGENE H5AD from the Wu et al. breast-cancer collection. "
-              "load_dataset attaches provisional registered GR/LE/SR × DL/RM metadata in memory."),
+              "load_dataset prepares the audited donor/count contract and attaches provisional "
+              "registered GR/LE/SR × DL/RM metadata in memory."),
     ),
     DatasetSpec(
         index=4,
@@ -148,7 +149,8 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         ),
         preferred_title="covid",
         note=("Published CELLxGENE H5AD; no source-cell editing is applied. "
-              "load_dataset attaches provisional registered GR/LE/SR × DL/RM metadata in memory."),
+              "load_dataset prepares the audited donor/count contract and attaches provisional "
+              "registered GR/LE/SR × DL/RM metadata in memory."),
     ),
     DatasetSpec(
         index=5,
@@ -166,7 +168,9 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         filename="pbmc_seurat_v4.h5ad",
         source_url=NYGC_SEURAT_V4_URL,
         sha256=NYGC_SEURAT_V4_SHA256,
-        note="Official scverse example-data H5AD; no scRareBench-specific editing is applied.",
+        note=("Official scverse example-data H5AD. load_dataset applies the audited official "
+              "scvi-tools PBMC QC in memory and attaches provisional rare-scenario metadata; "
+              "the downloaded source H5AD remains unchanged."),
     ),
 )
 
@@ -484,9 +488,11 @@ def load_dataset(
     No normalization, log transform, HVG selection, scaling, PCA, neighbors, or
     integration-method preprocessing is performed here.
 
-    For registered benchmark datasets with scenario metadata (currently dataset
-    0 and external datasets 2--4), six-state annotations are attached in memory
-    only. The downloaded source H5AD remains unchanged.
+    Datasets 3--5 receive only their audited dataset-level benchmark preparation
+    in memory: canonical count exposure for datasets 3/4 and the official
+    scvi-tools PBMC source-cell QC for dataset 5. Registered six-state annotations
+    are then attached for external datasets 2--5. The downloaded source H5AD
+    remains unchanged.
     """
     spec = resolve_dataset(selector)
     if data_dir is None:
@@ -514,13 +520,24 @@ def load_dataset(
     ad = _require_anndata()
     adata = ad.read_h5ad(path, backed=backed)
 
-    # External datasets are kept byte-for-byte as published on disk. Scenario
+    # Datasets 3--5 have audited dataset-level preparation contracts. These
+    # operations are deliberately separate from method preprocessing: no HVG,
+    # normalization, scaling, PCA, neighbors, or integration runs here.
+    if spec.key in {
+        "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc", "nygc_seurat_v4_pbmc",
+    }:
+        from .preparation import prepare_builtin_benchmark_dataset
+        adata = prepare_builtin_benchmark_dataset(adata, dataset_key=spec.key)
+
+    # External source files remain byte-for-byte unchanged on disk. Scenario
     # metadata is attached only to the in-memory AnnData returned by load_dataset.
     if spec.key in {
-        "mbdrc_renal_cortex", "wu_breast_cancer_atlas", "covid19_autoimmunity_pbmc",
+        "mbdrc_renal_cortex", "wu_breast_cancer_atlas",
+        "covid19_autoimmunity_pbmc", "nygc_seurat_v4_pbmc",
     }:
         from ..scenarios import annotate_registered_scenarios
         annotate_registered_scenarios(adata, dataset_key=spec.key, inplace=True, strict_labels=True)
+
     from .metadata import attach_builtin_dataset_metadata
     return attach_builtin_dataset_metadata(adata, dataset_key=spec.key, dataset_index=spec.index,
         display_name=spec.display_name, source_path=path)
