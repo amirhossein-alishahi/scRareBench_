@@ -1,0 +1,10 @@
+cell_type,scenario,distribution,topology,parent_type,curation_source,include_in_six_state,threshold_sensitive,low_confidence,protected_group_restricted,evidence_note
+CD4 Proliferating,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Proliferating state of CD4 T cells; provisional related-manifold assignment.
+CD8 Proliferating,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Proliferating state of CD8 T cells; provisional related-manifold assignment.
+ILC,SR-DL,SR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Distinct innate lymphoid lineage/identity.
+NK Proliferating,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Proliferating NK-cell state; provisional related-manifold assignment.
+NK_CD56bright,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,CD56bright NK-cell subtype/state; provisional related-manifold assignment.
+Plasmablast,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Differentiated B-lineage state; provisional related-manifold assignment.
+cDC1,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Distinct cDC1 lineage/identity.
+dnT,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Double-negative T-cell subtype/state; provisional related-manifold assignment.
+pDC,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,Distinct plasmacytoid dendritic-cell lineage/identity.
