@@ -115,17 +115,23 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
             "breast_cancer_atlas",
             "gse176078",
         ),
-        source_kind="cellxgene_collection",
+        # Pin the audited CELLxGENE H5AD instead of resolving the moving
+        # collection head. CELLxGENE curation can change the feature universe
+        # without changing the biological study/cell set, which would otherwise
+        # make the benchmark contract non-reproducible.
+        source_kind="direct_h5ad",
         modified=False,
-        filename="wu_breast_cancer_atlas.h5ad",
+        filename="wu_breast_cancer_atlas_0e3974a1.h5ad",
         collection_id="dea97145-f712-431c-a223-6b5f565f362a",
         source_url=(
-            "https://cellxgene.cziscience.com/collections/"
-            "dea97145-f712-431c-a223-6b5f565f362a"
+            "https://datasets.cellxgene.cziscience.com/"
+            "0e3974a1-9488-4987-9767-21d4e389fac7.h5ad"
         ),
-        preferred_title="breast",
-        note=("Published CELLxGENE H5AD from the Wu et al. breast-cancer collection. "
-              "load_dataset attaches provisional registered GR/LE/SR × DL/RM metadata in memory."),
+        note=(
+            "Pinned audited CELLxGENE H5AD from the Wu et al. breast-cancer collection "
+            "(100,064 cells × 28,468 features). load_dataset attaches canonical raw counts "
+            "and provisional registered GR/LE/SR × DL/RM metadata in memory."
+        ),
     ),
     DatasetSpec(
         index=4,

@@ -2,6 +2,7 @@
 
 ## Unreleased — built-in external dataset contracts
 
+- Pinned Dataset 3 (Wu breast-cancer atlas) to the audited immutable CELLxGENE H5AD `0e3974a1-9488-4987-9767-21d4e389fac7` instead of resolving the moving collection head, preventing upstream feature-universe revisions from breaking the validated 100,064 × 28,468 benchmark contract.
 - Made Datasets 3, 4 and 5 benchmark-ready at load time without changing the tested Dataset 0/1/2 flows.
 - Dataset 3 (Wu breast-cancer atlas): registers `celltype_subset` / `donor_id`, materializes an audited `counts` layer from aligned `raw.X`, and uses global scIB-reference HVG selection after the donor-aware Seurat-v3 LOESS audit failed at span 0.3.
 - Dataset 4 (COVID-19 autoimmunity PBMC): registers `cell_type` / `donor_id`, materializes canonical aligned `raw.X` counts, and updates the audited MAIT source label to `mucosal-associated invariant T cell`.
