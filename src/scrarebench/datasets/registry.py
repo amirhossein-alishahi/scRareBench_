@@ -121,7 +121,7 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         # make the benchmark contract non-reproducible.
         source_kind="direct_h5ad",
         modified=False,
-        filename="wu_breast_cancer_atlas.h5ad",
+        filename="wu_breast_cancer_atlas_0e3974a1.h5ad",
         collection_id="dea97145-f712-431c-a223-6b5f565f362a",
         source_url=(
             "https://datasets.cellxgene.cziscience.com/"
