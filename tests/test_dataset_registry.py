@@ -144,6 +144,7 @@ def test_dataset3_uses_pinned_audited_h5ad_without_touching_0_1_2_sources():
     assert d2.source_kind == "cellxgene_collection"
 
     assert d3.source_kind == "direct_h5ad"
+    assert d3.filename == "wu_breast_cancer_atlas_0e3974a1.h5ad"
     assert d3.collection_id == "dea97145-f712-431c-a223-6b5f565f362a"
     assert d3.source_url == (
         "https://datasets.cellxgene.cziscience.com/"
