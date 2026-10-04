@@ -131,3 +131,21 @@ def test_external_download_is_unmodified_and_writes_manifest(tmp_path, monkeypat
     assert path.name == "covid19_autoimmunity_pbmc.h5ad"
     assert manifest.exists()
     assert '"scrarebench_modification_applied": false' in manifest.read_text().lower()
+
+
+def test_dataset3_uses_pinned_audited_h5ad_without_touching_0_1_2_sources():
+    d0 = registry.resolve_dataset(0)
+    d1 = registry.resolve_dataset(1)
+    d2 = registry.resolve_dataset(2)
+    d3 = registry.resolve_dataset(3)
+
+    assert d0.source_kind == "gse194122_benchmark"
+    assert d1.source_kind == "gse194122_raw"
+    assert d2.source_kind == "cellxgene_collection"
+
+    assert d3.source_kind == "direct_h5ad"
+    assert d3.collection_id == "dea97145-f712-431c-a223-6b5f565f362a"
+    assert d3.source_url == (
+        "https://datasets.cellxgene.cziscience.com/"
+        "0e3974a1-9488-4987-9767-21d4e389fac7.h5ad"
+    )
