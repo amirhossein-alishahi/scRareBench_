@@ -9,7 +9,7 @@ Endothelial Lymphatic LYVE1,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_ann
 Myeloid_c0_DC_LAMP3,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,False,LAMP3 dendritic-cell state/maturation program.
 Myeloid_c11_cDC2_CD1C,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,cDC2 lineage identified by CD1C.
 Myeloid_c3_cDC1_CLEC9A,SR-DL,SR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,cDC1 lineage identified by CLEC9A.
-Myeloid_c4_DCs_pDC_IRF7,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,pDC with an IRF7 program; treated as a state-specific related manifold.
+Myeloid_c4_DCs_pDC_IRF7,GR-DL,GR,DL,,author_annotation_marker_review_2026_11,True,True,True,False,Plasmacytoid DC lineage distinct from cDC1/cDC2/LAMP3 DC; pDC markers LILRA4 CLEC4C TCF4 IRF7 support DL; original H5AD celltype_subset label unchanged.
 Myeloid_c5_Macrophage_3_SIGLEC1,SR-RM,SR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,SIGLEC1 macrophage state/subtype.
 Myeloid_c8_Monocyte_2_S100A9,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,S100A9 monocyte state/subtype.
 Myeloid_c9_Macrophage_2_CXCL10,GR-RM,GR,RM,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,False,CXCL10 activated macrophage state.
