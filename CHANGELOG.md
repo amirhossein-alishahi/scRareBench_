@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — standardized high-level notebook collection
+
+- Added 27 canonical High-Level Colab notebooks under `notebooks/high_level/`, with a dataset/method matrix and file-integrity manifest.
+- Preserved the method-specific code and preprocessing; only scRareBench Git revision pins were updated to the reviewed topology commit, nonfunctional output state removed, and filenames and notebook metadata normalized.
+- Archived the latest Seurat Ubuntu runner source for datasets 0/3/4/5 under `scripts/seurat_server/` without execution logs, temporary backups or redundant seed scripts.
+- Added structural, full-matrix, code-syntax, package-pin, and hash-integrity tests without requiring external datasets or GPU execution in CI.
+
 ## Unreleased — reviewed three-population scenario topology correction
 
 - Corrected Dataset 3 `Myeloid_c4_DCs_pDC_IRF7` from `GR-RM` to `GR-DL` based on source pDC lineage and marker review.

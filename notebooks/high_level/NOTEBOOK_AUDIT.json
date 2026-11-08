@@ -1,0 +1,9 @@
+{
+  "inputs": 27,
+  "normalized_notebooks": 27,
+  "source_archives": 4,
+  "scripts_count": 12,
+  "code_change_policy": "Only legacy scRareBench revision pins and stray empty/debug cells changed. No method or evaluation algorithm altered.",
+  "reviewed_scenario_commit": "cfdb720f5488b9ceef9a225b35fc7558bcb0251c",
+  "omitted": "Executed outputs and transient logs/backups are intentionally not committed."
+}

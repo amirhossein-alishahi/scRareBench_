@@ -271,6 +271,9 @@ For a multi-seed group, scalar metrics are summarized over included runs. Seed-s
 
 # Included notebooks
 
+The complete, standardized collection of **27 user-validated high-level Colab execution notebooks** (Harmony, MrVI, scDisInFact, scDML, scVI and Seurat, datasets 0/2/3/4/5 as available) is indexed in [High-Level Notebooks](notebooks/high_level/README.md). All include stripped execution outputs and pin the post-review scenario taxonomy commit. Historical Seurat Ubuntu runners are preserved separately under [scripts/seurat_server](scripts/seurat_server/README.md). Existing advanced example paths remain available for backward compatibility.
+
+
 The repository ships Colab-oriented examples for:
 
 - custom methods through the high-level API;
