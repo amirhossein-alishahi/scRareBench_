@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — reviewed three-population scenario topology correction
+
+- Corrected Dataset 3 `Myeloid_c4_DCs_pDC_IRF7` from `GR-RM` to `GR-DL` based on source pDC lineage and marker review.
+- Corrected Dataset 4 `B cell` (`Exhausted B` in the source annotation) and `natural killer cell` (`Prolif NK`) from `GR-DL` to `GR-RM`.
+- Updated only registered six-scenario topology metadata and explanatory provenance. Original cell-type annotations, cells, distribution classes, method preprocessing, embeddings, and metric formulas are unchanged.
+- Added regression tests locking all 17 Dataset 3 and 12 Dataset 4 labels, scenario counts, in-memory non-mutation, and scenario-level reaggregation.
+- Previously generated reports retain their historical scenario contracts; affected scenario summaries and interactive views must be regenerated or coherently post-hoc audited before manuscript use.
+
 ## Unreleased — built-in external dataset contracts
 
 - Pinned Dataset 3 (Wu breast-cancer atlas) to the audited immutable CELLxGENE H5AD `0e3974a1-9488-4987-9767-21d4e389fac7` instead of resolving the moving collection head, preventing upstream feature-universe revisions from breaking the validated 100,064 × 28,468 benchmark contract.
