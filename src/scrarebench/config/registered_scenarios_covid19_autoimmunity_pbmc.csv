@@ -6,7 +6,7 @@ hematopoietic stem cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotat
 immature B cell,GR-RM,GR,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,True,B-cell state/subtype/differentiation state.
 memory B cell,GR-RM,GR,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,True,B-cell memory state/subtype.
 mucosal-associated invariant T cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct MAIT lineage/identity.
-natural killer cell,GR-DL,GR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Distinct NK lineage/identity.
+natural killer cell,GR-RM,GR,RM,NK-cell lineage,author_annotation_marker_review_2026_11,True,True,True,True,The benchmark H5AD cell_type natural killer cell maps 226/226 to source annotation Prolif NK; MKI67 TOP2A TYMS cell-cycle program supports proliferative NK state; original cell_type label unchanged.
 neutrophil,LE-DL,LE,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,True,False,True,Distinct neutrophil lineage/identity.
 plasma cell,GR-RM,GR,RM,B cell,rare_cell_benchmark_report_probable_annotation_v1,True,True,True,True,Differentiated B-lineage state.
 plasmacytoid dendritic cell,SR-DL,SR,DL,,rare_cell_benchmark_report_probable_annotation_v1,True,False,False,True,Distinct pDC lineage/identity.
