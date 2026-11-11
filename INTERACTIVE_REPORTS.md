@@ -143,7 +143,7 @@ Use **Import reports** or drag files into the import area.
 
 Supported inputs include:
 
-- current scRareBench v0.10.6/schema-1.6 single-run interactive HTML;
+- scRareBench v1.0.0/schema-1.6 single-run interactive HTML;
 - current multi-seed interactive HTML;
 - scRareBench result/delivery ZIPs containing compatible interactive HTML or `results.json`;
 - standalone `results.json`;

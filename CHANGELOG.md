@@ -1,13 +1,19 @@
 # Changelog
 
-## Unreleased — standardized high-level notebook collection
+## 1.0.0 — 2026-11-11 (stable paper release)
+
+- Establishes the first stable tagged-release candidate for the validated paper benchmark contract, reviewed Dataset 3/4 scenario assignments, and standardized high-level notebooks.
+- Version/packaging and documentation synchronization only; no changes to integration pipelines, metric formulas, input data contracts, or dashboard scientific behavior in this bump.
+- Historical benchmark result artifacts retain their original embedded version and evaluation-provenance hashes.
+
+### Included in v1.0.0 — standardized high-level notebook collection
 
 - Added 27 canonical High-Level Colab notebooks under `notebooks/high_level/`, with a dataset/method matrix and file-integrity manifest.
 - Preserved the method-specific code and preprocessing; only scRareBench Git revision pins were updated to the reviewed topology commit, nonfunctional output state removed, and filenames and notebook metadata normalized.
 - Archived the latest Seurat Ubuntu runner source for datasets 0/3/4/5 under `scripts/seurat_server/` without execution logs, temporary backups or redundant seed scripts.
 - Added structural, full-matrix, code-syntax, package-pin, and hash-integrity tests without requiring external datasets or GPU execution in CI.
 
-## Unreleased — reviewed three-population scenario topology correction
+### Included in v1.0.0 — reviewed three-population scenario topology correction
 
 - Corrected Dataset 3 `Myeloid_c4_DCs_pDC_IRF7` from `GR-RM` to `GR-DL` based on source pDC lineage and marker review.
 - Corrected Dataset 4 `B cell` (`Exhausted B` in the source annotation) and `natural killer cell` (`Prolif NK`) from `GR-DL` to `GR-RM`.
@@ -15,7 +21,7 @@
 - Added regression tests locking all 17 Dataset 3 and 12 Dataset 4 labels, scenario counts, in-memory non-mutation, and scenario-level reaggregation.
 - Previously generated reports retain their historical scenario contracts; affected scenario summaries and interactive views must be regenerated or coherently post-hoc audited before manuscript use.
 
-## Unreleased — built-in external dataset contracts
+### Included in v1.0.0 — built-in external dataset contracts
 
 - Pinned Dataset 3 (Wu breast-cancer atlas) to the audited immutable CELLxGENE H5AD `0e3974a1-9488-4987-9767-21d4e389fac7` instead of resolving the moving collection head, preventing upstream feature-universe revisions from breaking the validated 100,064 × 28,468 benchmark contract.
 - Made Datasets 3, 4 and 5 benchmark-ready at load time without changing the tested Dataset 0/1/2 flows.
