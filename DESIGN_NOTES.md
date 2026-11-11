@@ -1,4 +1,4 @@
-# scRareBench 0.10.6 benchmark design
+# scRareBench 1.0.0 benchmark design
 
 This document summarizes the public benchmark contract implemented by scRareBench.
 

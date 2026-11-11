@@ -2,12 +2,14 @@
 
 **Rare-cell-aware, scIB-compatible benchmarking for single-cell RNA-seq integration latent spaces**
 
-[![Release](https://img.shields.io/badge/release-0.10.6-blue)](https://github.com/amirhossein-alishahi/scRareBench_/releases)
+[![Release](https://img.shields.io/badge/release-1.0.0-blue)](https://github.com/amirhossein-alishahi/scRareBench_/releases)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.11-blue)](#installation)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Benchmark seed](https://img.shields.io/badge/benchmark_seed-42-6d4aff)](#reproducibility)
 
-**Current release: `0.10.6`**
+**Current release: `1.0.0`**
+
+Stable paper-reproducibility checkpoint: this release includes the reviewed Dataset 3/4 rare-scenario taxonomy and the tested high-level notebook collection; benchmark formulas, integration algorithms, and dataset preprocessing are unchanged. The archived 27 high-level study notebooks preserve their exact earlier commit pins for historical reproducibility.
 
 scRareBench evaluates single-cell integration and batch-correction **latent representations** with conventional scIB-compatible metrics and an explicit rare-cell recovery layer.
 
@@ -92,7 +94,7 @@ comparator/scRareBench_Multi_Report_Comparator_v10.html
 
 Open the file in a browser and import scRareBench outputs by drag-and-drop or with **Import reports**. Nothing needs to be uploaded to a server; report data are processed locally in the browser. The comparator loads its pinned Plotly/JSZip browser libraries from public CDNs.
 
-The comparator accepts current v0.10.6/schema-1.6 single-run and multi-seed interactive HTML reports, result ZIPs, `results.json`, and compatible legacy HTML reports.
+The comparator accepts current v1.0.0/schema-1.6 single-run and multi-seed interactive HTML reports, result ZIPs, `results.json`, and compatible legacy HTML reports.
 
 ![scRareBench Comparator v10 methods view](docs/images/comparator_methods_v10.webp)
 
@@ -116,7 +118,7 @@ Detailed comparator instructions are in **[INTERACTIVE_REPORTS.md](INTERACTIVE_R
 ## Standard installation from the release tag
 
 ```bash
-pip install "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.6"
+pip install "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v1.0.0"
 ```
 
 Python `>=3.11` is required.
@@ -126,7 +128,7 @@ Python `>=3.11` is required.
 The shipped Colab notebooks bootstrap the package first and then let scRareBench install its benchmark dependencies while preserving ABI-sensitive packages already present in the runtime:
 
 ```python
-%pip install -q --no-deps "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v0.10.6"
+%pip install -q --no-deps "git+https://github.com/amirhossein-alishahi/scRareBench_.git@v1.0.0"
 
 from scrarebench.runtime import setup_runtime
 runtime_report = setup_runtime()
